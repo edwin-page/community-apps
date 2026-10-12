@@ -69,3 +69,23 @@ header, pre-game mode, team focus sample and timezone at three pinned times:
 228 of 228 WebP outputs were byte-identical, with no request outside the
 recording. The sports playback, timezone and sequence tests also pass.
 Physical-screen playback is not covered by these checks.
+
+### Teams without a record (October 2026)
+
+Downstream change, original authorship retained. Exhibition opponents can have
+no `records` in the feed: the 2024 preseason game against Puerto Rico is one.
+With the default Record pre-game line, such a game before tip-off failed every
+render with `key "records" not in dict`. A team without a record now shows no
+record, and its opponent still shows its own. When the home team has no record
+both teams still show `0-0`, as before. Nothing else changes.
+
+Validation: `tools/lunchbox_logos/parity.py`-style renders of the previous and
+new source from the same recorded responses: the live feed, the July all-teams
+dates, and the 9 and 11 May 2024 preseason feeds, both as recorded and with the
+state rewritten to pre-game. Every layout, header, pre-game mode, team focus
+sample and timezone was rendered at three pinned times. All 387 renders that
+the previous source completed were byte-identical. The other 69, all from the
+rewritten preseason, failed before on the missing record and now render, none
+of them empty. No request fell outside the recording.
+`tests/scoreboard_missing_records.py` renders the Puerto Rico game in every
+layout. Physical-screen playback is not covered by these checks.

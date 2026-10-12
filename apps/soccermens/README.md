@@ -103,3 +103,28 @@ rendered all 2996 bundled URL and size pairs identically to the freshly
 downloaded originals. The sports playback and sequence tests, `niblet check`,
 format and lint also pass. Physical-screen playback is not covered by these
 checks.
+
+### Penalty shootouts and teams without a record (October 2026)
+
+Downstream change, original authorship retained. Wide 3 and Wide 4 failed on
+every penalty-shootout final (`unknown binary op: string + int`,
+`soccermens.star:1025`). The feed gives a non-zero shootout tally as a number,
+so building the "FT 5-4" status failed; it now converts both tallies to
+strings. The other layouts read each team's `records` only after checking the
+home team, and a postponed match read them unchecked; cup matches often carry
+no records. A team without a record now shows no record there (blank, as when
+the home team has none). Nothing else changes.
+
+Validation: `tools/lunchbox_logos/parity.py`-style renders of the previous and
+new source from the same recorded responses (every league option and layout,
+calendar windows, team order and date formats, three pinned times, 1x and 2x),
+for two recordings of 12 October 2026. All 3332 successful renders of the
+previous source were byte-identical. 48 that failed before on shootout finals
+now render, none empty. The remaining 328 fail identically in both versions
+(244 on the Wikimedia 403 placeholder and 84 on the `zzz.donotuse` league
+option), unchanged here. No request fell outside the recording. Today's feeds
+have no match where only one team lacks a record, so
+`tests/scoreboard_missing_records.py` renders a recorded EFL Trophy shootout
+final and a recorded DFB-Pokal match without records, shown as postponed, in
+every layout; both crashed the previous version. Physical-screen playback is
+not covered by these checks.

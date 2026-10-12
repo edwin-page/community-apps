@@ -63,12 +63,8 @@ def ncaafscores_matrix():
     for i, team in enumerate(FOCUS):
         configs.append({"selectedTeam": team, "displayType": ["colors", "logos", "horizontal", "black"][i % 4],
                         "timezone": TIMEZONES[i % 3], "rotationSpeed": str(3 + i % 5)})
-    # Both versions fail the Division II/III feed with the default pre-game
-    # records when an opponent has no "records" (an upstream app limitation,
-    # unchanged here), so those configurations show no pre-game line instead.
-    for config in configs:
-        if config.get("conferenceType") == "35":
-            config.setdefault("pregameDisplay", "nothing")
+    # Division II/III configurations use the default pre-game records: an
+    # opponent without "records" no longer fails the render (October 2026).
     return configs
 
 

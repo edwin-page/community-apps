@@ -93,3 +93,27 @@ finals (`string + int`); neither is changed here.
 identically to the freshly downloaded originals. The sports playback and
 sequence tests, `niblet check`, format and lint also pass. Physical-screen
 playback is not covered by these checks.
+
+### Penalty shootouts and teams without a record (October 2026)
+
+Downstream change, original authorship retained. Wide 3 and Wide 4 failed on
+every penalty-shootout final (`unknown binary op: string + int`). The feed
+gives a non-zero shootout tally as a number; the status now converts both
+tallies to strings. In NCAA soccer an opponent from outside Division I can
+have no `records` while the home team has one (Central Baptist at
+Arkansas-Pine Bluff, 1 September 2026). Before kickoff such a match failed
+every render of the other layouts with `key "records" not in dict`, and a
+postponed match read records unchecked. A team without a record now shows no
+record (blank, as when the home team has none). Nothing else changes.
+
+Validation: `tools/lunchbox_logos/parity.py`-style renders of the previous and
+new source from the same recorded responses (every league option and layout,
+calendar windows, team order and date formats, three pinned times, 1x and 2x),
+for two recordings of 12 October 2026. All 1608 successful renders of the
+previous source were byte-identical. 48 that failed before on shootout finals
+now render, none empty. The remaining 216 fail identically in both versions on
+the Wikimedia 403 placeholder, unchanged here. No request fell outside the
+recording. `tests/scoreboard_missing_records.py` renders the Central Baptist
+match, rewritten to pre-game, and a recorded shootout final in every layout;
+both crashed the previous version. Physical-screen playback is not covered by
+these checks.

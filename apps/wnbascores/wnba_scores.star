@@ -169,8 +169,9 @@ def main(config):
                             homeScore = "0-0"
                             awayScore = "0-0"
                         else:
-                            homeScore = competition["competitors"][0]["records"][0]["summary"]
-                            awayScore = competition["competitors"][1]["records"][0]["summary"]
+                            # Niblet: either team may lack a record (see record_summary).
+                            homeScore = record_summary(competition["competitors"][0])
+                            awayScore = record_summary(competition["competitors"][1])
                     else:
                         homeScore = str(competition["series"]["competitors"][0]["wins"]) + "-" + str(competition["series"]["competitors"][1]["wins"])
                         awayScore = str(competition["series"]["competitors"][1]["wins"]) + "-" + str(competition["series"]["competitors"][0]["wins"])
@@ -829,6 +830,14 @@ def get_record(record):
     else:
         theRecord = record
     return theRecord
+
+# Niblet: a competitor's first record summary, or no record ("") when the feed
+# omits it (exhibition opponents such as Puerto Rico have none).
+def record_summary(competitor):
+    records = competitor.get("records") or []
+    if not records:
+        return ""
+    return records[0].get("summary") or ""
 
 def get_background_color(team, displayType, color):
     altcolors = ALT_COLORS

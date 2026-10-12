@@ -1,3 +1,7 @@
+# Modified in this community-maintained version; see Git history for contributors.
+# Original author and license notices are retained below.
+# See README.md for maintenance and compatibility notes.
+
 """
 Applet: FlyTheL
 Summary: Show MLB Win/Loss Status
@@ -228,10 +232,14 @@ def main(config):
     current_hour = get_now(timezone).hour
     yesterday = get_yesterday_date(timezone)
 
+    # Niblet: the schedule is empty when the team has no games in the window
+    # (offseason, or eliminated from the postseason); show "no games" then.
+    dates = sched.get("dates") or []
+
     game = None
-    if current_hour < hour_to_switch:
+    if current_hour < hour_to_switch and dates:
         # want to do yesterday's game, if it exists (will be 0-index if it is there)
-        event = sched.get("dates")[0]
+        event = dates[0]
         if event.get("date") == yesterday:
             # TODO: add handling for doubleheaders somehow
             game = event.get("games")[0]
@@ -239,7 +247,7 @@ def main(config):
     # if we didn't find a game above, find one now
     if not game:
         # loop through events until we find one to display
-        for event in sched.get("dates"):
+        for event in dates:
             if event.get("date") > yesterday:
                 # TODO: add handling for doubleheaders somehow
                 game = event.get("games")[0]
