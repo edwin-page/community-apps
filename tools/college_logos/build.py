@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Bundle pre-resized team logos for the LunchBox8484 college sports apps.
 
-    python3 tools/college_logos/build.py --runtime /path/to/niblet [--cache DIR] [app ...]
+    python3 tools/college_logos/build.py --runtime /path/to/niblet [--cache DIR] [--check] [app ...]
 
 For each app this:
 
@@ -20,9 +20,15 @@ For each app this:
 
 Apps draw a bundled logo only when the requested URL and size match exactly,
 and fall back to the original cached HTTP fetch otherwise.
+
+--check rebuilds into a temporary directory and fails if the committed files
+differ. Reusing the --cache directory of the committed build makes the check
+reproducible offline; with a fresh cache it also reports upstream drift (new
+teams, changed rosters or redrawn logos).
 """
 import argparse
 import hashlib
+import http.client
 import json
 import re
 import shutil
@@ -44,8 +50,12 @@ CORE = "https://sports.core.api.espn.com/v2/sports/"
 # kind "scores" draws logos at get_logoSize(team), 30 and 32 pixels;
 # kind "standings" draws them at 10 pixels.
 APPS = {
-    "ncaafscores": ("scores", "football", "college-football", {"groups": ["80", "81"]},
-                    "every FBS and FCS team (ESPN groups 80 and 81, 2026 season): the Top 25, FBS and FCS feeds and every conference option except Division II/III"),
+    # College football also samples the 2026 regular-season scoreboards, whose
+    # team abbreviations (which select alternate logos and sizes) can differ
+    # from ESPN's team list (Air Force is "AF" there and "AFA" on scoreboards).
+    "ncaafscores": ("scores", "football", "college-football",
+                    {"groups": ["80", "81", "35"], "season_weeks": (["80", "81", "35"], 1, 16), "alt_keys": True},
+                    "every FBS, FCS and Division II/III team (ESPN groups 80, 81 and 35, 2026 season), as listed by ESPN and as reported on the 2026 regular-season FBS, FCS and Division II/III scoreboards (weeks 1-16), and every alternate-logo team: the Top 25, FBS and FCS feeds and every conference option"),
     "ncaafstandings": ("standings", "football", "college-football", {"groups": ["80"]},
                        "every FBS team (ESPN group 80, 2026 season): all conference and Top 25 options"),
     "ncaamscores": ("scores", "basketball", "mens-college-basketball", {"groups": ["50"]},
@@ -101,11 +111,19 @@ class Store:
         key = hashlib.sha256(url.encode()).hexdigest()
         if key not in self.index:
             request = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-            try:
-                with urllib.request.urlopen(request, timeout=30) as response:
-                    status, body, kind = response.status, response.read(), response.headers.get("Content-Type", "")
-            except urllib.error.HTTPError as error:
-                status, body, kind = error.code, error.read(), error.headers.get("Content-Type", "")
+            for attempt in range(4):
+                try:
+                    with urllib.request.urlopen(request, timeout=30) as response:
+                        status, body, kind = response.status, response.read(), response.headers.get("Content-Type", "")
+                except urllib.error.HTTPError as error:
+                    status, body, kind = error.code, error.read(), error.headers.get("Content-Type", "")
+                except (OSError, http.client.HTTPException):
+                    # Retry truncated or dropped transfers; give up after four attempts.
+                    if attempt == 3:
+                        raise
+                    time.sleep(2 * (attempt + 1))
+                    continue
+                break
             (self.path / key).write_bytes(body)
             self.index[key] = {"url": url, "fetched": url, "status": status, "type": kind}
             self.index_path.write_text(json.dumps(self.index, indent=1, sort_keys=True))
@@ -150,7 +168,46 @@ def scoreboard_candidates(store, sport, league, spec):
     return [candidate for candidate, count in seen.most_common() if count >= minimum]
 
 
-def app_logo_requests(runtime, app, kind, candidates):
+def season_week_candidates(store, sport, league, spec):
+    """Teams on each group's regular-season scoreboards, as the feed reports them."""
+    groups, first, last = spec
+    candidates = []
+    for group in groups:
+        for week in range(first, last + 1):
+            feed = fetch_json(store, SITE + "%s/%s/scoreboard?limit=300&groups=%s&dates=%s&seasontype=2&week=%d" % (sport, league, group, SEASON, week))
+            for event in feed.get("events", []):
+                for competitor in event["competitions"][0]["competitors"]:
+                    team = competitor["team"]
+                    if team.get("abbreviation"):
+                        # The apps draw the placeholder when the feed omits a logo.
+                        candidates.append((team["abbreviation"], team.get("logo", TRANSPARENT)))
+    return candidates
+
+
+def feed_candidates(store, urls):
+    """Teams in standings or rankings feeds: team.logos[0].href or team.logo, as the apps read them."""
+    candidates = []
+
+    def walk(node):
+        if isinstance(node, dict):
+            team = node.get("team")
+            if isinstance(team, dict) and team.get("abbreviation"):
+                if team.get("logos"):
+                    candidates.append((team["abbreviation"], team["logos"][0]["href"]))
+                elif team.get("logo"):
+                    candidates.append((team["abbreviation"], team["logo"]))
+            for child in node.values():
+                walk(child)
+        elif isinstance(node, list):
+            for child in node:
+                walk(child)
+
+    for url in urls:
+        walk(fetch_json(store, url))
+    return candidates
+
+
+def app_logo_requests(runtime, app, kind, candidates, alt_keys = False):
     """Evaluate the app's own get_logo_source/get_logoSize for every candidate."""
     app_dir = ROOT / "apps" / app
     source = next(p for p in app_dir.glob("*.star"))
@@ -162,9 +219,13 @@ def main(config):
     out = []
     for c in LOGO_CANDIDATES:
         out.append([get_logo_source(c[0], c[1])[0], %s])
+    # Every alternate-logo team, whatever abbreviation sources reported it.
+    for team in (ALT_LOGO_TABLE if %s else {}):
+        c = [team, ""]
+        out.append([get_logo_source(c[0], c[1])[0], %s])
     print("LOGO-REQUESTS " + json.encode(out))
     return []
-""" % (json.dumps(candidates), sizes)
+""" % (json.dumps(candidates), sizes, "True" if alt_keys else "False", sizes)
     with tempfile.TemporaryDirectory() as tmp:
         work = Path(tmp) / app
         (work / "logos").mkdir(parents=True)
@@ -190,21 +251,25 @@ def slug(url):
     return re.sub(r"[^a-z0-9]+", "-", (host + "-" + name).lower()).strip("-")
 
 
-def build(app, runtime, store, resizer):
+def build(app, runtime, store, resizer, out_dir, date):
     kind, sport, league, spec, selection = APPS[app]
     if "groups" in spec:
         candidates = group_candidates(store, sport, league, spec["groups"])
     else:
         candidates = scoreboard_candidates(store, sport, league, spec["scoreboards"])
+    if "season_weeks" in spec:
+        candidates += season_week_candidates(store, sport, league, spec["season_weeks"])
+    if "feeds" in spec:
+        candidates += feed_candidates(store, spec["feeds"])
+    candidates = sorted(set(candidates))
     candidates.append(("", TRANSPARENT))
     requests = {}
-    for url, sizes in app_logo_requests(runtime, app, kind, candidates):
+    for url, sizes in app_logo_requests(runtime, app, kind, candidates, spec.get("alt_keys", False)):
         requests.setdefault(url, set()).update(sizes)
 
-    out_dir = ROOT / "apps" / app / "logos"
     if out_dir.exists():
         shutil.rmtree(out_dir)
-    out_dir.mkdir()
+    out_dir.mkdir(parents=True)
     with tempfile.TemporaryDirectory() as tmp:
         jobs, names = [], {}
         for url in sorted(requests):
@@ -240,11 +305,11 @@ def build(app, runtime, store, resizer):
     (out_dir / "index.json").write_text("{\n" + ",\n".join(entries) + "\n}\n")
     lines = ["  %s: %s" % (json.dumps(url), json.dumps(sources[url], sort_keys=True)) for url in sorted(sources)]
     (out_dir / "sources.json").write_text('{\n "generated": "%s",\n "pack": "logos.bin",\n "logos": {\n%s\n }\n}\n'
-                                          % (time.strftime("%Y-%m-%d"), ",\n".join(lines)))
+                                          % (date, ",\n".join(lines)))
     sizes = sorted({size for spans in bundle.values() for size in spans})
     (out_dir / "README.md").write_text(README % {
         "count": len(bundle), "images": sum(len(v) for v in bundle.values()), "bytes": len(pack),
-        "selection": selection, "sizes": ", ".join(map(str, sizes)), "date": time.strftime("%Y-%m-%d")})
+        "selection": selection, "sizes": ", ".join(map(str, sizes)), "date": date})
     total = sum(p.stat().st_size for p in out_dir.rglob("*") if p.is_file())
     print("%s: %d logos, %d images, %d pack bytes, %d bytes total" % (app, len(bundle), sum(len(v) for v in bundle.values()), len(pack), total))
 
@@ -253,14 +318,34 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--runtime", required=True)
     parser.add_argument("--cache", default=str(Path(tempfile.gettempdir()) / "college-logos-cache"))
+    parser.add_argument("--check", action="store_true",
+                        help="regenerate into a temporary directory and fail if the committed logos/ differ")
     parser.add_argument("apps", nargs="*", default=list(APPS))
     args = parser.parse_args()
     store = Store(args.cache)
+    failed = False
     with tempfile.TemporaryDirectory() as tmp:
         resizer = Path(tmp) / "resize"
         subprocess.run(["go", "build", "-o", str(resizer), "."], cwd=TOOL / "resize", check=True)
         for app in args.apps:
-            build(app, args.runtime, store, resizer)
+            committed = ROOT / "apps" / app / "logos"
+            if not args.check:
+                build(app, args.runtime, store, resizer, committed, time.strftime("%Y-%m-%d"))
+                continue
+            # Check against the committed generation date, so only content differences fail.
+            date = json.loads((committed / "sources.json").read_text())["generated"]
+            out_dir = Path(tmp) / app / "logos"
+            build(app, args.runtime, store, resizer, out_dir, date)
+            names = sorted({p.name for p in committed.iterdir()} | {p.name for p in out_dir.iterdir()})
+            differ = [n for n in names if not (committed / n).is_file() or not (out_dir / n).is_file()
+                      or (committed / n).read_bytes() != (out_dir / n).read_bytes()]
+            if differ:
+                failed = True
+                print("%s: committed logos/ differ from a fresh build: %s" % (app, ", ".join(differ)), file=sys.stderr)
+            else:
+                print("%s: committed logos/ match a fresh build" % app)
+    if failed:
+        sys.exit(1)
 
 
 if __name__ == "__main__":

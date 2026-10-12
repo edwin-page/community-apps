@@ -5,6 +5,8 @@
 # (pixel-identical to the fetched and resized originals); other teams still use
 # the original cached request. Logos are only fetched by layouts that draw them,
 # lookup tables are decoded once, and the clock is read only when shown or needed.
+# October 2026: the bundle also covers Division II/III teams, alternate-logo teams
+# and the abbreviations the scoreboard reports (such as AFA); see README.md.
 
 """
 Applet: NCAAF Scores
