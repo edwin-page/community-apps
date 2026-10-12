@@ -56,8 +56,12 @@ APPS = {
     "ncaafscores": ("scores", "football", "college-football",
                     {"groups": ["80", "81", "35"], "season_weeks": (["80", "81", "35"], 1, 16), "alt_keys": True},
                     "every FBS, FCS and Division II/III team (ESPN groups 80, 81 and 35, 2026 season), as listed by ESPN and as reported on the 2026 regular-season FBS, FCS and Division II/III scoreboards (weeks 1-16), and every alternate-logo team: the Top 25, FBS and FCS feeds and every conference option"),
-    "ncaafstandings": ("standings", "football", "college-football", {"groups": ["80"]},
-                       "every FBS team (ESPN group 80, 2026 season): all conference and Top 25 options"),
+    "ncaafstandings": ("standings", "football", "college-football",
+                       {"groups": ["80"], "alt_keys": True,
+                        "feeds": ["https://site.api.espn.com/apis/site/v2/sports/football/college-football/rankings"] +
+                                 ["https://site.api.espn.com/apis/v2/sports/football/college-football/standings?group=" + g
+                                  for g in ("1", "151", "4", "5", "12", "15", "17", "9", "8", "37&0", "37&1")]},
+                       "every FBS team (ESPN group 80, 2026 season) as listed by ESPN and as reported by the Top 25 and every conference standings feed, and every alternate-logo team: all conference and Top 25 options"),
     "ncaamscores": ("scores", "basketball", "mens-college-basketball", {"groups": ["50"]},
                     "every Division I team (ESPN group 50, 2026 season): every conference option"),
     "ncaamstandings": ("standings", "basketball", "mens-college-basketball", {"groups": ["50"]},
