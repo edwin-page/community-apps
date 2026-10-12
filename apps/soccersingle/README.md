@@ -45,3 +45,35 @@ Thanks to @jesushairdo for the option to be able to show home or away team first
 ## Schema Search for Teams
 ![screenshot](soccersingle-schema-teamsearch-3.jpg)
 ![screenshot](soccersingle-schema-teamsearch-2.jpg)
+
+### Bundled pre-resized team logos (October 2026)
+
+Downstream change, original authorship retained. Soccer Single follows one team
+in any competition, so it has no league list of its own. It bundles the club
+crests and national flags of every team ESPN lists for the league and
+tournament options of Mens Soccer and Womens Soccer (69 competitions as of
+12 October 2026, plus their current scoreboards) and five further crests
+production renders requested, 1219 URLs in all. They are in `images/logos/` at
+each size the layouts draw them (16, 30 and 32 pixels), produced by the
+runtime's own nearest-neighbour resize from the same source URLs, and stored in
+about 128 KB `pack-NN.bin` shards; `logos.star` records each source URL, its
+SHA-256 and the byte range of each size. This covers all 50 logo URLs
+production renders requested from 9 to 12 October 2026. Regenerate or verify
+with `cd tools/lunchbox_logos && go run . -app soccersingle [-check]`.
+
+Retro, which draws no logos, no longer downloads a bundled one. Any other team,
+URL or size is still fetched as before. The Wikimedia placeholder used for a
+missing logo returns 403 to the runtime's HTTP client and is not bundled, and
+one crest ESPN serves as a GIF (`soccer/500/635.png`) is left to the network.
+Team colour lookups are unchanged. Settings, timing and artwork are unchanged;
+a logo ESPN later redraws at the same URL stays at the bundled version until
+the bundle is regenerated.
+
+Validation: `tools/lunchbox_logos/parity.py` rendered the previous and new
+source from the same recorded responses for the 34 club team IDs whose crests
+production requested, in every layout with both team orders, at three pinned
+times: 420 of 420 WebP outputs were byte-identical, with no request outside the
+recording. `tools/lunchbox_logos/verify.py` rendered all 3657 bundled URL and
+size pairs identically to the freshly downloaded originals. `niblet check`,
+format and lint also pass. Physical-screen playback is not covered by these
+checks.
