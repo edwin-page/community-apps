@@ -58,3 +58,38 @@ Thanks to @jesushairdo for the new option to be able to show home or away team f
 ### September 21 score-data resilience
 
 Edwin adapted the missing-odds and series-summary fixes from [Luke Solomon’s upstream change](https://github.com/tronbyt/apps/commit/edf5e1f5cb7ff319e8d805ae6a6f7325b1a51cf2) across the score apps. Missing optional odds, series summaries, or notes no longer abort playback. Unavailable odds stay blank; scores and final status remain visible. Existing settings, game ordering, and card timing are preserved. Offline missing-field and full-sequence renders are covered by `tests/sports_playback.py`; this does not certify provider availability or physical display playback.
+
+### Bundled pre-resized team logos (October 2026)
+
+Downstream change, original authorship retained. The club crests and national
+flags of every team ESPN lists for the 22 league and tournament options (the
+`comps.json` list as of 12 October 2026, plus each competition's current
+scoreboard), 557 URLs in all, are packaged in `images/logos/` at each size the
+layouts draw them (16 for Team Colors and Black, 30, 32 for Horizontal, 16 for
+Wide 3 and 9 for Wide 4), produced by the runtime's own nearest-neighbour
+resize from the same source URLs. The files are stored in about 128 KB
+`pack-NN.bin` shards; `logos.star` records each source URL, its SHA-256 and the
+byte range of each size, so a render reads only the shards it draws from. This
+covers all 4 logo URLs production renders requested from 9 to 12 October 2026.
+Regenerate or verify with `cd tools/lunchbox_logos && go run . -app soccerwomens [-check]`.
+
+Retro, which draws no logos, no longer downloads a bundled one. A logo URL or
+size missing from the bundle is still fetched as before. The Wikimedia
+placeholder used for an empty ESPN logo (`1x1.png?src=soccerwomens`) returns
+403 to the runtime's HTTP client and ESPN's `ncaa_football` placeholder returns
+404, so neither is bundled and those renders behave exactly as before. Settings,
+ordering, timing and artwork are unchanged; a logo ESPN later redraws at the
+same URL stays at the bundled version until the bundle is regenerated.
+
+Validation: `tools/lunchbox_logos/parity.py` rendered the previous and new
+source from the same recorded responses (the live scoreboards of every option)
+for every league with every layout, plus calendar windows, team order, date
+formats and team-colour samples, at three pinned times and at 1x and 2x:
+804 of 804 successful WebP outputs were byte-identical, with no request outside
+the recording. The other 132 of the 936 renders failed identically in both
+versions: 108 on the Wikimedia 403 above and 24 on Wide 3/4 penalty-shootout
+finals (`string + int`); neither is changed here.
+`tools/lunchbox_logos/verify.py` rendered all 2228 bundled URL and size pairs
+identically to the freshly downloaded originals. The sports playback and
+sequence tests, `niblet check`, format and lint also pass. Physical-screen
+playback is not covered by these checks.

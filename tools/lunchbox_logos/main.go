@@ -1,15 +1,18 @@
 // Command lunchbox_logos bundles pre-resized team logos into the LunchBox8484
-// professional-league score and standings apps, and into other sports apps
-// whose logo URLs come from team tables in their own source ("feed": "source",
-// see source.go).
+// professional-league score and standings apps, the soccer score apps derived
+// from them (EPL Scores, Mens and Womens Soccer, Soccer Single), and other
+// sports apps whose logo URLs come from team tables in their own source
+// ("feed": "source", see source.go).
 //
 // Usage, from the repository root:
 //
 //	cd tools/lunchbox_logos && go run . [-app nflscores] [-check]
 //
-// For each app in apps.json it reads the league feed over the configured dates,
-// derives every logo URL the app would request for the teams it saw (applying
-// the app's own URL rewriting and ALT_LOGO overrides, parsed from its source),
+// For each app in apps.json it reads the league feed over the configured dates
+// (or, for "teams" feeds, the ESPN team list and current scoreboard of every
+// league the app offers), derives every logo URL the app would request for the
+// teams it saw (applying the app's own URL rewriting and ALT_LOGO overrides,
+// parsed from its source),
 // downloads those URLs, and writes images/logos/*.png plus logos.star. The module
 // sits in the app root because the runtime's compiled-program cache cannot yet
 // store modules from subdirectories.
@@ -48,6 +51,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/nfnt/resize"
@@ -57,10 +61,20 @@ const transparentURL = "https://i.ibb.co/5LMp8T1/transparent.png"
 
 type appConfig struct {
 	Source string `json:"source"`
-	// "scoreboard" or "standings" (league feed), or "source" (team tables in
-	// the app source; Rule names the mirror in sourceLogos).
+	// "scoreboard" or "standings" (league feed), "teams" (team lists of every
+	// league option), or "source" (team tables in the app source; Rule names
+	// the mirror in sourceLogos).
 	Feed   string `json:"feed"`
 	League string `json:"league"`
+	// "teams" feeds: the sport and every league option the app offers. Each
+	// league's team list and current scoreboard supply team logos.
+	Sport   string   `json:"sport"`
+	Leagues []string `json:"leagues"`
+	// Logo URLs, as the feed reports them, that the app requested in production
+	// for teams outside those leagues.
+	ExtraLogos []string `json:"extra_logos"`
+	// Logo URLs the app substitutes for a missing logo; drawn at every size.
+	Placeholders []string `json:"placeholders"`
 	// URL rewriting copied from the app's get_logoType; see candidates().
 	Rule string `json:"rule"`
 	// Inclusive YYYYMMDD ranges whose daily scoreboards list the league's teams.
@@ -70,8 +84,15 @@ type appConfig struct {
 	// Whether compact layouts draw get_logoSize(team) (MAGNIFY_LOGO, default 16).
 	Compact bool  `json:"compact"`
 	Scales  []int `json:"scales"`
+	// Parity only: render scales, when they differ from the logo scales (apps
+	// that draw the same logo sizes on a 2x canvas). See parity.py.
+	RenderScales []int `json:"render_scales"`
 	// Team logos the app already ships, keyed by team.
 	Local map[string]string `json:"local"`
+	// Pack the files into ~128 KB images/logos/pack-NN.bin shards indexed by
+	// logos.star instead of one load() per file: thousands of loads cost more
+	// per render than the downloads they replace.
+	Pack bool `json:"pack"`
 }
 
 type logoUse struct {
@@ -89,6 +110,7 @@ type bundled struct {
 
 var client = &http.Client{Timeout: 30 * time.Second}
 var downloads = map[string]*download{}
+var downloadsMu sync.Mutex
 
 type download struct {
 	status int
@@ -97,10 +119,13 @@ type download struct {
 }
 
 func fetch(url string) *download {
-	if d, ok := downloads[url]; ok {
+	downloadsMu.Lock()
+	d, ok := downloads[url]
+	downloadsMu.Unlock()
+	if ok {
 		return d
 	}
-	d := &download{}
+	d = &download{}
 	for attempt := 0; attempt < 4; attempt++ {
 		res, err := client.Get(url)
 		if err != nil {
@@ -116,8 +141,30 @@ func fetch(url string) *download {
 		}
 		time.Sleep(time.Duration(attempt+1) * 2 * time.Second)
 	}
+	downloadsMu.Lock()
 	downloads[url] = d
+	downloadsMu.Unlock()
 	return d
+}
+
+// prefetch downloads urls concurrently into the fetch cache.
+func prefetch(urls []string) {
+	work := make(chan string)
+	var wg sync.WaitGroup
+	for i := 0; i < 8; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for url := range work {
+				fetch(url)
+			}
+		}()
+	}
+	for _, url := range urls {
+		work <- url
+	}
+	close(work)
+	wg.Wait()
 }
 
 func main() {
@@ -230,7 +277,12 @@ func feedLogos(cfg appConfig) (map[string]map[string]bool, error) {
 		out[team][logo] = true
 	}
 	var urls []string
-	if cfg.Feed == "standings" {
+	if cfg.Feed == "teams" {
+		for _, league := range cfg.Leagues {
+			base := "https://site.api.espn.com/apis/site/v2/sports/" + cfg.Sport + "/" + league
+			urls = append(urls, base+"/teams?limit=1000", base+"/scoreboard")
+		}
+	} else if cfg.Feed == "standings" {
 		urls = append(urls, "https://site.api.espn.com/apis/v2/sports/"+cfg.League+"/standings")
 	} else {
 		base := "https://site.api.espn.com/apis/site/v2/sports/" + cfg.League + "/scoreboard?limit=300"
@@ -249,6 +301,7 @@ func feedLogos(cfg appConfig) (map[string]map[string]bool, error) {
 			}
 		}
 	}
+	prefetch(urls)
 	for _, url := range urls {
 		d := fetch(url)
 		if d.err != nil || d.status != 200 {
@@ -262,6 +315,10 @@ func feedLogos(cfg appConfig) (map[string]map[string]bool, error) {
 			walkStandings(doc, add)
 			continue
 		}
+		if strings.HasSuffix(strings.SplitN(url, "?", 2)[0], "/teams") {
+			walkTeams(doc, add)
+			continue
+		}
 		events, _ := doc.(map[string]any)["events"].([]any)
 		for _, event := range events {
 			comps, _ := event.(map[string]any)["competitions"].([]any)
@@ -272,8 +329,13 @@ func feedLogos(cfg appConfig) (map[string]map[string]bool, error) {
 			for _, c := range competitors {
 				team, _ := c.(map[string]any)["team"].(map[string]any)
 				abbr, _ := team["abbreviation"].(string)
+				if id, _ := team["id"].(string); abbr == "" && cfg.Feed == "teams" {
+					abbr = id // ESPN omits some soccer abbreviations.
+				}
 				logo, present := team["logo"].(string)
 				switch {
+				case cfg.Feed == "teams" && (!present || logo == ""):
+					// The soccer apps substitute their placeholders (see Placeholders).
 				case !present:
 					// Apps substitute the transparent placeholder for a missing logo.
 					add(abbr, transparentURL)
@@ -288,6 +350,30 @@ func feedLogos(cfg appConfig) (map[string]map[string]bool, error) {
 		}
 	}
 	return out, nil
+}
+
+// walkTeams reads an ESPN team list; scoreboards report logos[0].href as team.logo.
+func walkTeams(doc any, add func(string, string)) {
+	sports, _ := doc.(map[string]any)["sports"].([]any)
+	for _, sport := range sports {
+		leagues, _ := sport.(map[string]any)["leagues"].([]any)
+		for _, league := range leagues {
+			teams, _ := league.(map[string]any)["teams"].([]any)
+			for _, entry := range teams {
+				team, _ := entry.(map[string]any)["team"].(map[string]any)
+				abbr, _ := team["abbreviation"].(string)
+				if id, _ := team["id"].(string); abbr == "" {
+					abbr = id
+				}
+				logos, _ := team["logos"].([]any)
+				if len(logos) > 0 {
+					if href, ok := logos[0].(map[string]any)["href"].(string); ok && href != "" {
+						add(abbr, href)
+					}
+				}
+			}
+		}
+	}
 }
 
 // walkStandings finds standings entries; the apps draw team.logos[1].href.
@@ -402,8 +488,15 @@ func generate(root, name string, cfg appConfig, check bool) error {
 			original++
 		}
 	}
-	files["logos.star"] = []byte(starlark(name, logos))
+	if cfg.Pack {
+		files["logos.star"] = []byte(packed(name, logos, files))
+	} else {
+		files["logos.star"] = []byte(starlark(name, logos))
+	}
 	files["images/logos/README.md"] = []byte(fmt.Sprintf(provenance, name))
+	if cfg.Pack {
+		files["images/logos/README.md"] = append(files["images/logos/README.md"], []byte(packedNote)...)
+	}
 
 	total := 0
 	for _, body := range files {
@@ -462,6 +555,29 @@ func feedUses(cfg appConfig, source string) (map[string]*logoUse, []string, erro
 			teams[""][""] = true
 		}
 	}
+	if len(cfg.Placeholders) > 0 {
+		teams[""] = map[string]bool{}
+		for _, url := range cfg.Placeholders {
+			teams[""][url] = true
+		}
+	}
+	for _, logo := range cfg.ExtraLogos {
+		// Labelled by file name, since no feed reported their abbreviations.
+		label := strings.TrimSuffix(logo[strings.LastIndex(logo, "/")+1:], ".png")
+		if teams[label] == nil {
+			teams[label] = map[string]bool{}
+		}
+		teams[label][logo] = true
+	}
+	var wanted []string
+	for _, team := range sortedKeys(teams) {
+		altURL, _ := alt[team].(string)
+		for _, logo := range sortedKeys(teams[team]) {
+			urls, _ := candidates(cfg.Rule, altURL, logo)
+			wanted = append(wanted, urls...)
+		}
+	}
+	prefetch(wanted)
 	var unbundled []string
 	teamNames := sortedKeys(teams)
 	for _, team := range teamNames {
@@ -661,6 +777,90 @@ reproduce the runtime's pixels exactly.
 
 Team names and logos remain the property of their respective owners.
 `
+
+const packedNote = `
+The files are stored back to back in ` + "`pack-NN.bin`" + ` shards (all sizes of one logo
+in the same shard); ` + "`../../logos.star`" + ` records each file's byte range, so a render
+reads only the shards of the logos it draws.
+`
+
+const packTarget = 128 << 10
+
+// packed moves every logo file into shards (all sizes of one logo in the same
+// shard, in key order) and returns a logos.star that indexes them.
+func packed(app string, logos []*bundled, files map[string][]byte) string {
+	type span struct{ pack, start, end int }
+	var packs [][]byte
+	ranges := map[string]map[int]span{}
+	for _, logo := range logos {
+		if len(logo.files) == 0 {
+			continue
+		}
+		if len(packs) == 0 || len(packs[len(packs)-1]) >= packTarget {
+			packs = append(packs, nil)
+		}
+		n := len(packs) - 1
+		ranges[logo.key] = map[int]span{}
+		offsets := map[string]span{}
+		for _, size := range sortedKeys(logo.files) {
+			path := logo.files[size]
+			if at, ok := offsets[path]; ok {
+				ranges[logo.key][size] = at
+				continue
+			}
+			at := span{n, len(packs[n]), len(packs[n]) + len(files[path])}
+			packs[n] = append(packs[n], files[path]...)
+			offsets[path] = at
+			ranges[logo.key][size] = at
+		}
+	}
+	for path := range files {
+		if strings.HasPrefix(path, "images/logos/") && path != "images/logos/README.md" {
+			delete(files, path)
+		}
+	}
+	var b strings.Builder
+	fmt.Fprintf(&b, `"""
+Bundled team logos for %s. Generated by tools/lunchbox_logos; do not edit.
+
+BUNDLED_LOGO_RANGES maps each URL the app would read to PNG files already
+resized by the runtime's nearest-neighbour resize, keyed by drawn size, as
+(pack, start, end): bytes [start, end) of LOGO_PACKS[pack]. Comments record
+each source's SHA-256. URLs and sizes not listed are fetched from the network
+as before.
+"""
+
+`, app)
+	for i, pack := range packs {
+		path := fmt.Sprintf("images/logos/pack-%02d.bin", i)
+		files[path] = pack
+		fmt.Fprintf(&b, "load(%q, _PACK_%02d = \"file\")\n", path, i)
+	}
+	fmt.Fprintf(&b, "\nLOGO_PACKS = [\n")
+	for i := range packs {
+		fmt.Fprintf(&b, "    _PACK_%02d,\n", i)
+	}
+	fmt.Fprintf(&b, "]\n\nBUNDLED_LOGO_RANGES = {\n")
+	for _, logo := range logos {
+		if ranges[logo.key] == nil {
+			continue
+		}
+		digest := sha256.Sum256(logo.src)
+		label := strings.Join(logo.teams, ", ")
+		if label == "" {
+			label = "placeholder"
+		}
+		fmt.Fprintf(&b, "    # %s; source sha256 %s\n", label, hex.EncodeToString(digest[:]))
+		fmt.Fprintf(&b, "    %s: {\n", strconv.Quote(logo.key))
+		for _, size := range sortedKeys(ranges[logo.key]) {
+			at := ranges[logo.key][size]
+			fmt.Fprintf(&b, "        %d: (%d, %d, %d),\n", size, at.pack, at.start, at.end)
+		}
+		fmt.Fprintf(&b, "    },\n")
+	}
+	fmt.Fprintf(&b, "}\n")
+	return b.String()
+}
 
 func starlark(app string, logos []*bundled) string {
 	var b strings.Builder

@@ -73,6 +73,34 @@
     "source": "nba_standings.star", "feed": "standings", "league": "basketball/nba",
     "rule": "combiner", "layout_sizes": [10], "scales": [1]
   },
+  "eplscores": {
+    "source": "eplscores.star", "feed": "scoreboard", "league": "soccer/eng.1",
+    "rule": "combiner", "dates": [["20260815", "20260915"]],
+    "layout_sizes": [30, 32], "compact": true, "scales": [1],
+    "parity_canvases": [[64, 32], [64, 64]]
+  },
+  "soccermens": {
+    "source": "soccermens.star", "pack": true, "feed": "teams", "sport": "soccer", "rule": "combiner",
+    "leagues": ["afc.champions", "bel.1", "concacaf.champions", "concacaf.gold", "concacaf.leagues.cup", "concacaf.nations.league", "conmebol.america", "ita.coppa_italia", "ned.1", "ned.2", "eng.league_cup", "eng.trophy", "eng.fa", "eng.2", "eng.3", "eng.4", "eng.5", "eng.1", "fra.1", "fifa.world.u17", "fifa.world.u20", "fifa.cwc", "fifa.world", "ger.1", "ger.dfb_pokal", "ger.super_cup", "ita.1", "fifa.friendly", "mex.1", "fifa.olympics", "ksa.1", "sco.1", "esp.copa_del_rey", "esp.1", "uefa.champions", "uefa.champions_qual", "uefa.euro", "uefa.euroq", "uefa.europa", "usa.open", "usa.usl.1", "fifa.worldq.afc", "fifa.worldq.caf", "fifa.worldq.concacaf", "fifa.worldq.conmebol", "fifa.worldq.ofc", "fifa.worldq.uefa"],
+    "placeholders": ["https://upload.wikimedia.org/wikipedia/commons/c/ca/1x1.png?src=soccermens",
+                     "https://a.espncdn.com/i/espn/misc_logos/500/ncaa_football.vresize.50.50.medium.1.png"],
+    "layout_sizes": [9, 16, 30, 32], "scales": [1], "render_scales": [1, 2]
+  },
+  "soccerwomens": {
+    "source": "soccerwomens.star", "pack": true, "feed": "teams", "sport": "soccer", "rule": "combiner",
+    "leagues": ["aus.w.1", "concacaf.womens.championship", "conmebol.america.femenina", "ned.w.1", "ned.w.knvb_cup", "eng.w.fa", "eng.w.1", "fra.w.1", "usa.ncaa.w.1", "global.pinatar_cup", "fifa.shebelieves", "esp.copa_de_la_reina", "esp.w.1", "uefa.wchampions", "uefa.weuro", "usa.nwsl", "usa.nwsl.cup", "fifa.friendly.w", "fifa.w.olympics", "fifa.wwc", "fifa.wworld.u17", "fifa.wworldq.uefa"],
+    "placeholders": ["https://upload.wikimedia.org/wikipedia/commons/c/ca/1x1.png?src=soccerwomens",
+                     "https://a.espncdn.com/i/espn/misc_logos/500/ncaa_football.vresize.50.50.medium.1.png"],
+    "layout_sizes": [9, 16, 30, 32], "scales": [1], "render_scales": [1, 2]
+  },
+  "soccersingle": {
+    "source": "soccer_single.star", "pack": true, "feed": "teams", "sport": "soccer", "rule": "combiner",
+    "leagues": ["afc.champions", "bel.1", "concacaf.champions", "concacaf.gold", "concacaf.leagues.cup", "concacaf.nations.league", "conmebol.america", "ita.coppa_italia", "ned.1", "ned.2", "eng.league_cup", "eng.trophy", "eng.fa", "eng.2", "eng.3", "eng.4", "eng.5", "eng.1", "fra.1", "fifa.world.u17", "fifa.world.u20", "fifa.cwc", "fifa.world", "ger.1", "ger.dfb_pokal", "ger.super_cup", "ita.1", "fifa.friendly", "mex.1", "fifa.olympics", "ksa.1", "sco.1", "esp.copa_del_rey", "esp.1", "uefa.champions", "uefa.champions_qual", "uefa.euro", "uefa.euroq", "uefa.europa", "usa.open", "usa.usl.1", "fifa.worldq.afc", "fifa.worldq.caf", "fifa.worldq.concacaf", "fifa.worldq.conmebol", "fifa.worldq.ofc", "fifa.worldq.uefa", "aus.w.1", "concacaf.womens.championship", "conmebol.america.femenina", "ned.w.1", "ned.w.knvb_cup", "eng.w.fa", "eng.w.1", "fra.w.1", "usa.ncaa.w.1", "global.pinatar_cup", "fifa.shebelieves", "esp.copa_de_la_reina", "esp.w.1", "uefa.wchampions", "uefa.weuro", "usa.nwsl", "usa.nwsl.cup", "fifa.friendly.w", "fifa.w.olympics", "fifa.wwc", "fifa.wworld.u17", "fifa.wworldq.uefa"],
+    "extra_logos": ["https://a.espncdn.com/i/teamlogos/soccer/500/19002.png", "https://a.espncdn.com/i/teamlogos/soccer/500/22414.png", "https://a.espncdn.com/i/teamlogos/soccer/500/22415.png", "https://a.espncdn.com/i/teamlogos/soccer/500/3101.png", "https://a.espncdn.com/i/teamlogos/soccer/500/7632.png"],
+    "placeholders": ["https://upload.wikimedia.org/wikipedia/commons/c/ca/1x1.png?src=soccermens"],
+    "layout_sizes": [16, 30, 32], "scales": [1],
+    "parity_teams": ["86", "102", "104", "114", "124", "166", "187", "190", "193", "262", "352", "359", "360", "363", "364", "368", "383", "1068", "2980", "3101", "4411", "7632", "9723", "15362", "15364", "15365", "19002", "19995", "21422", "22187", "22414", "22415", "22528", "131563"]
+  },
   "mlb_game": {
     "source": "mlb_game.star", "feed": "source", "rule": "mlb_game",
     "layout_sizes": [14], "scales": [1]

@@ -64,6 +64,7 @@ SCENARIOS = {
     "xflscores": {"allteams": ["20230218", "20230219", "20230225", "20230226"]},
     "wbcscores": {"allteams": ["20260305", "20260306", "20260307", "20260308", "20260309"]},
     "mhkyscores": {"allteams": ["20260109", "20260110", "20260116", "20260117"]},
+    "eplscores": {"allteams": ["20260815", "20260816", "20260817", "20260822", "20260823", "20260824"], "upcoming": ["20261017"]},
 }
 
 
@@ -115,18 +116,26 @@ def merged_feed(league, dates, exclude=()):
     return json.dumps(doc).encode()
 
 
-def render(runtime, main, out, config, now, scale, snapshot, metadata):
+def render(runtime, main, out, config, now, scale, snapshot, metadata, canvas=None):
     args = [runtime, "render", str(main), "-o", str(out), "--now", now, "--metadata-output", str(metadata),
             "--timeout", "60s", "--silent"]
+    if canvas:
+        args += ["-w", str(canvas[0]), "-t", str(canvas[1])]
     if snapshot:
         args += ["--input-snapshot", str(snapshot)]
     if scale == 2:
         args.append("-2")
     args += [f"{k}={v}" for k, v in config.items()]
+    Path(metadata).unlink(missing_ok=True)
+    started = time.monotonic()
     result = subprocess.run(args, capture_output=True, text=True, env={**os.environ, "PIXLET_IMAGE_CACHE_DIR": ""})
     if result.returncode != 0:
+        # A failed render still reports its inputs; callers compare the error.
+        if Path(metadata).exists():
+            error = [line for line in result.stderr.splitlines() if line.strip()][-1:]
+            return {**json.loads(Path(metadata).read_text()), "error": error}, result.stderr[-2000:]
         return None, result.stderr[-2000:]
-    return json.loads(Path(metadata).read_text()), None
+    return {**json.loads(Path(metadata).read_text()), "elapsed": time.monotonic() - started}, None
 
 
 def base_copy(revision, app, destination):
@@ -136,8 +145,21 @@ def base_copy(revision, app, destination):
     return destination / "apps" / app / CONFIG[app]["source"]
 
 
+SCHEMAS = {}
+
+
 def options(runtime, main, field_id):
-    schema = json.loads(subprocess.check_output([runtime, "schema", str(main)], stderr=subprocess.DEVNULL))
+    if str(main) not in SCHEMAS:
+        # Some schemas fetch their options (soccer league lists); retry slow responses.
+        for attempt in range(5):
+            result = subprocess.run([runtime, "schema", str(main)], capture_output=True, text=True)
+            if result.returncode == 0:
+                SCHEMAS[str(main)] = json.loads(result.stdout)
+                break
+            time.sleep(2 * (attempt + 1))
+        else:
+            raise SystemExit(f"schema {main}: {result.stderr[-500:]}")
+    schema = SCHEMAS[str(main)]
     for field in schema["schema"]:
         if field["id"] == field_id:
             return [o["value"] for o in field.get("options", [])]
@@ -167,8 +189,24 @@ def matrix(runtime, main, app):
     for i, division in enumerate(divisions):
         configs.append({"divisionType": division, "teamsOptions": rows[i % len(rows)] if rows else None,
                         "displayTop": tops[i % len(tops)] if tops else None})
-    for i, tz in enumerate(TIMEZONES[1:]):
-        configs.append({"timezone": tz, "displayTop": "time" if "time" in tops else None, "displayType": (display_types or [None, None])[i]})
+    if CONFIG[app]["feed"] != "teams":
+        for i, tz in enumerate(TIMEZONES[1:]):
+            configs.append({"timezone": tz, "displayTop": "time" if "time" in tops else None, "displayType": (display_types or [None, None])[i]})
+    # Soccer apps: every league option with every layout, then calendar windows,
+    # team order and date formats on a sample of leagues.
+    leagues = options(runtime, main, "leagueOptions")
+    for league, display_type in itertools.product(leagues, display_types if leagues else []):
+        configs.append({"leagueOptions": league, "displayType": display_type})
+    for i, league in enumerate(leagues[:: max(1, len(leagues) // 8)]):
+        configs.append({"leagueOptions": league, "displayType": display_types[i % len(display_types)], "day_range": "true",
+                        "days_back": str(1 + i % 3), "days_forward": str(2 + i % 3), "team_sequence": "home",
+                        "is_24_hour_format": str(i % 2 == 0).lower(), "is_us_date_format": str(i % 2 == 1).lower(),
+                        "wide_team_colors": str(i % 3 != 0).lower()})
+    # Soccer Single: the teams production installations followed, in every layout.
+    for i, team in enumerate(CONFIG[app].get("parity_teams", [])):
+        for display_type in display_types:
+            configs.append({"teamid": team, "displayType": display_type, "team_sequence": ["visitor", "home"][i % 2],
+                            "is_24_hour_format": str(i % 3 == 0).lower()})
     return [{k: v for k, v in c.items() if v is not None} for c in configs]
 
 
@@ -182,17 +220,20 @@ def record(runtime, base_main, app, directory, configs):
         if dates and not snap.entries:
             # Learn the default scoreboard URL from a live render, then serve the merged body there.
             meta, err = render(runtime, base_main, directory / "probe.webp", {}, NOWS[0], 1, None, directory / "probe.json")
-            assert meta, err
+            assert meta and not err, err
             feed = next(i["url"] for i in meta["inputs"] if "/scoreboard" in i["url"] and "dates=" not in i["url"])
             snap.add(feed, 200, merged_feed(cfg["league"], dates, cfg.get("parity_exclude_teams", ())))
         for _ in range(6):
             missing = set()
             # Team focus requests calendar windows, so discover them at every pinned time.
-            probes = [(c, NOWS[0]) for c in configs[:: max(1, len(configs) // 12)]]
-            probes += [(c, now) for c in configs if "selectedTeam" in c for now in NOWS]
-            for config, now in probes:
-                meta, err = render(runtime, base_main, directory / "probe.webp", config, now, 1, snap.dir if snap.entries else None, directory / "probe.json")
-                if meta is None:
+            probes = [(c, NOWS[0], 1) for c in configs[:: max(1, len(configs) // 12)]]
+            probes += [(c, now, 1) for c in configs if "selectedTeam" in c for now in NOWS]
+            if cfg["feed"] == "teams":
+                # Soccer requests depend on league, time (calendar windows) and scale (2x-only layouts).
+                probes = [(c, now, scale) for c in configs for now in NOWS for scale in cfg.get("render_scales", cfg["scales"])]
+            for config, now, scale in probes:
+                meta, err = render(runtime, base_main, directory / "probe.webp", config, now, scale, snap.dir if snap.entries else None, directory / "probe.json")
+                if meta is None or (err and not meta.get("inputs")):
                     print(f"{app}/{name}: record render failed {config}: {err}", file=sys.stderr)
                     continue
                 missing |= {i["url"] for i in meta["inputs"] if i["url"] not in snap.entries}
@@ -381,30 +422,42 @@ def main():
             if args.record:
                 (record_source if source else record)(runtime, base_main, app, args.snapshots, configs)
             scenarios = sorted(p.name for p in (args.snapshots / app).iterdir() if (p / "index.json").exists())
-            jobs = [(s, c, now, scale) for s in scenarios for c in configs for now in NOWS for scale in cfg["scales"]]
+            canvases = [tuple(c) for c in cfg["parity_canvases"]] if "parity_canvases" in cfg else [None]
+            scales = cfg.get("render_scales", cfg["scales"])
+            jobs = [(s, c, now, scale, canvas) for s in scenarios for c in configs for now in NOWS for scale in scales for canvas in canvases]
 
             def run(job, index):
-                scenario, config, now, scale = job
+                scenario, config, now, scale, canvas = job
                 snap = args.snapshots / app / scenario
                 out = {}
                 for label, main_path in (("base", base_main), ("new", new_main)):
                     webp, meta = tmp / f"{app}-{index}-{label}.webp", tmp / f"{app}-{index}-{label}.json"
-                    m, err = render(runtime, main_path, webp, config, now, scale, snap, meta)
+                    m, err = render(runtime, main_path, webp, config, now, scale, snap, meta, canvas)
                     if m is None:
                         return job, None, f"{label} failed: {err}"
                     offline = [i["url"] for i in m["inputs"] if i.get("source") != "snapshot"]
                     if offline:
                         return job, None, f"{label} requested outside snapshot: {offline[:3]}"
-                    out[label] = (webp.read_bytes(), m)
+                    out[label] = (None if err else webp.read_bytes(), m)
+                if (out["base"][0] is None) != (out["new"][0] is None):
+                    return job, None, f"only one version failed: {out['base'][1].get('error')} / {out['new'][1].get('error')}"
+                if out["base"][0] is None:
+                    # Both failed: the same error from the same recorded request counts separately.
+                    if out["base"][1]["error"] != out["new"][1]["error"]:
+                        return job, None, f"different errors: {out['base'][1]['error']} / {out['new'][1]['error']}"
+                    return job, ("failed", out["base"][1]["error"][0][:160]), None
                 same = out["base"][0] == out["new"][0]
                 return job, (same, out["base"][1], out["new"][1], len(out["base"][0])), None
 
-            identical, empty, deltas = 0, 0, {}
+            identical, empty, deltas, timings, both_failed = 0, 0, {}, [0.0, 0.0], {}
             with concurrent.futures.ThreadPoolExecutor(args.jobs) as pool:
                 for job, result, err in pool.map(lambda p: run(*p), [(j, i) for i, j in enumerate(jobs)]):
                     if err:
                         print(f"{app}: FAIL {job}: {err}")
                         failed = True
+                        continue
+                    if result[0] == "failed":
+                        both_failed[result[1]] = both_failed.get(result[1], 0) + 1
                         continue
                     same, mb, mn, size = result
                     if not same:
@@ -414,9 +467,14 @@ def main():
                     identical += 1
                     empty += mb["frame_count"] == 0
                     key = (len(mb["inputs"]), mb["reads"]["time"], len(mn["inputs"]), mn["reads"]["time"])
+                    timings[0] += mb["elapsed"]
+                    timings[1] += mn["elapsed"]
                     deltas[key] = deltas.get(key, 0) + 1
             print(f"{app}: {identical}/{len(jobs)} renders byte-identical ({empty} empty) across {len(scenarios)} scenarios {scenarios}, "
-                  f"{len(configs)} configs, {len(NOWS)} times, scales {cfg['scales']}")
+                  f"{len(configs)} configs, {len(NOWS)} times, scales {scales}, canvases {canvases}")
+            print(f"{app}:   summed render wall time base {timings[0]:.1f}s, new {timings[1]:.1f}s")
+            for error, count in sorted(both_failed.items()):
+                print(f"{app}:   {count} renders failed in both versions with the same error: {error}")
             for (bi, bt, ni, nt), count in sorted(deltas.items()):
                 print(f"{app}:   inputs {bi} -> {ni}, reads.time {bt} -> {nt}: {count} renders")
     sys.exit(1 if failed else 0)
