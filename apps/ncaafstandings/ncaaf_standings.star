@@ -4,6 +4,8 @@
 # (pixel-identical to the fetched and resized originals); other teams still use
 # the original cached request. Lookup tables are decoded once, and the clock is
 # read only when the time header shows it.
+# October 2026: the bundle also covers every alternate-logo team and the
+# abbreviations the standings feeds report (such as AFA); see README.md.
 
 """
 Applet: NCAAF Standings
