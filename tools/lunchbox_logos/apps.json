@@ -78,5 +78,12 @@
     "rule": "combiner", "dates": [["20260815", "20260915"]],
     "layout_sizes": [30, 32], "compact": true, "scales": [1],
     "parity_canvases": [[64, 32], [64, 64]]
+  },
+  "soccermens": {
+    "source": "soccermens.star", "pack": true, "feed": "teams", "sport": "soccer", "rule": "combiner",
+    "leagues": ["afc.champions", "bel.1", "concacaf.champions", "concacaf.gold", "concacaf.leagues.cup", "concacaf.nations.league", "conmebol.america", "ita.coppa_italia", "ned.1", "ned.2", "eng.league_cup", "eng.trophy", "eng.fa", "eng.2", "eng.3", "eng.4", "eng.5", "eng.1", "fra.1", "fifa.world.u17", "fifa.world.u20", "fifa.cwc", "fifa.world", "ger.1", "ger.dfb_pokal", "ger.super_cup", "ita.1", "fifa.friendly", "mex.1", "fifa.olympics", "ksa.1", "sco.1", "esp.copa_del_rey", "esp.1", "uefa.champions", "uefa.champions_qual", "uefa.euro", "uefa.euroq", "uefa.europa", "usa.open", "usa.usl.1", "fifa.worldq.afc", "fifa.worldq.caf", "fifa.worldq.concacaf", "fifa.worldq.conmebol", "fifa.worldq.ofc", "fifa.worldq.uefa"],
+    "placeholders": ["https://upload.wikimedia.org/wikipedia/commons/c/ca/1x1.png?src=soccermens",
+                     "https://a.espncdn.com/i/espn/misc_logos/500/ncaa_football.vresize.50.50.medium.1.png"],
+    "layout_sizes": [9, 16, 30, 32], "scales": [1], "render_scales": [1, 2]
   }
 }
