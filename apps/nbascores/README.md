@@ -69,3 +69,28 @@ header, pre-game mode, team focus sample and timezone at three pinned times:
 648 of 648 (64x32 and 2x) WebP outputs were byte-identical, with no request outside the
 recording. The sports playback, timezone and sequence tests also pass.
 Physical-screen playback is not covered by these checks.
+
+### Teams without a record (October 2026)
+
+Downstream change, original authorship retained. From 12 October 2026 the
+scoreboard listed a preseason game against the London Lions, whose feed entry
+has no `records`; with the default Record pre-game line every render failed
+with `key "records" not in dict` (`nba_scores.star:228`). ESPN listed similar
+exhibition opponents in earlier preseasons (New Zealand Breakers in 2024,
+Guangzhou Loong-Lions and Melbourne in 2025). A team without a record now shows
+no record, and its opponent still shows its own. When the home team has no
+record both teams still show `0-0`, as before. Nothing else changes. A feed
+entry without a team abbreviation still fails the render (`key "abbreviation"
+not in dict`), as for Melbourne on 4 October 2025; that is unchanged here.
+
+Validation: `tools/lunchbox_logos/parity.py`-style renders of the previous and
+new source from the same recorded responses: today's live feed, the existing
+all-teams and October slates, the 2025 preseason dates with Guangzhou and
+Melbourne, and the 2024 and 2025 preseason slates with the state rewritten to
+pre-game. Every layout, header, pre-game mode, team focus sample and timezone
+was rendered at three pinned times and both scales. All 882 renders that the
+previous source completed were byte-identical. The other 414 (138 each from
+today's feed and the two rewritten preseasons) failed before on the missing
+record and now render, none of them empty. No request fell outside the
+recording. `tests/scoreboard_missing_records.py` renders the recorded London
+Lions game in every layout. Physical-screen playback is not covered by these checks.
