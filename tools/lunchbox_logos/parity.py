@@ -18,22 +18,31 @@ URL, chosen so that every team (and so every bundled logo) and pre-game, live
 and final cards are drawn. Later runs replay offline; any request either
 version makes outside the snapshot fails the check.
 
+Apps with "feed": "source" in apps.json (logo URLs from team tables in the
+source) use SOURCE_APPS below instead: every team option and toggle, and
+scenarios whose recorded responses are real provider bodies for chosen dates,
+with the game state optionally rewritten so pre-game, live, final and no-game
+screens are all drawn for every team. Both versions read the same recording.
+
 Prints, per app, the number of identical renders and the metadata deltas
 (inputs, reads.time) between the two versions.
 """
 import argparse
 import concurrent.futures
+import datetime
 import hashlib
 import io
 import itertools
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 import subprocess
 import sys
 import tarfile
 import tempfile
+import time
 import urllib.error
 import urllib.request
 
@@ -77,11 +86,16 @@ class Snapshot:
 
 def fetch(url):
     request = urllib.request.Request(url, headers={"User-Agent": "Go-http-client/1.1"})
-    try:
-        with urllib.request.urlopen(request, timeout=30) as response:
-            return response.status, response.read()
-    except urllib.error.HTTPError as error:
-        return error.code, error.read()
+    for attempt in range(6):
+        try:
+            with urllib.request.urlopen(request, timeout=30) as response:
+                return response.status, response.read()
+        except urllib.error.HTTPError as error:
+            # Rate limits and server errors are retried rather than recorded.
+            if (error.code == 429 or error.code >= 500) and attempt < 5:
+                time.sleep(2 ** attempt * 2)
+                continue
+            return error.code, error.read()
 
 
 def merged_feed(league, dates, exclude=()):
@@ -189,6 +203,112 @@ def record(runtime, base_main, app, directory, configs):
         print(f"{app}/{name}: {len(snap.entries)} recorded responses")
 
 
+# ---------------------------------------------------------------------------
+# "feed": "source" apps. A scenario is a hook(url) returning (status, body) to
+# record for that URL, or None to record the live response unchanged.
+
+MLB_STATE = {"Preview": ("Scheduled", "S"), "Live": ("In Progress", "I"), "Final": ("Final", "F")}
+
+
+def json_body(url):
+    status, body = fetch(url)
+    assert status == 200, (url, status)
+    return json.loads(body)
+
+
+def mlb_live_linescore(ls):
+    ls.update({"currentInning": 7, "isTopInning": False, "balls": 2, "strikes": 1, "outs": 1})
+    ls["offense"] = {**ls.get("offense", {}), "first": {"id": 1, "fullName": "A Runner"}, "third": {"id": 2, "fullName": "B Runner"}}
+
+
+def mlb_set_state(doc, state):
+    for day in doc.get("dates", []):
+        for game in day.get("games", []):
+            detailed, code = MLB_STATE[state]
+            game["status"].update({"abstractGameState": state, "detailedState": detailed, "codedGameState": code, "statusCode": code})
+            if state == "Preview":
+                game.pop("linescore", None)
+                for side in ("away", "home"):
+                    game["teams"][side].pop("score", None)
+            elif state == "Live" and "linescore" in game:
+                mlb_live_linescore(game["linescore"])
+
+
+def mlb(day, state=None, next_state=None, no_games=False):
+    """statsapi schedules for `day` (date-less URLs) or windows starting the day after (startDate URLs)."""
+    def hook(url):
+        if "statsapi.mlb.com/api/v1/schedule?" in url:
+            window = re.search(r"startDate=([\d-]+)&endDate=([\d-]+)", url)
+            if window:
+                span = datetime.date.fromisoformat(window[2]) - datetime.date.fromisoformat(window[1])
+                start = datetime.date.fromisoformat(day) + datetime.timedelta(days=1 if next_state else 0)
+                doc = json_body(url.replace(window[0], f"startDate={start}&endDate={start + span}"))
+                if next_state:
+                    mlb_set_state(doc, next_state)
+            else:
+                doc = json_body(url + "&date=" + day)
+                if state:
+                    mlb_set_state(doc, state)
+            if no_games:
+                doc["dates"], doc["totalGames"] = [], 0
+            return 200, json.dumps(doc).encode()
+        if state == "Live" and re.search(r"/api/v1/game/\d+/linescore$", url):
+            doc = json_body(url)
+            mlb_live_linescore(doc)
+            return 200, json.dumps(doc).encode()
+        return None
+    return hook
+
+
+def team_configs(runtime, main, field, extra):
+    teams = [t for t in options(runtime, main, field) if t not in ("0", "")]
+    configs = [{field: t} for t in teams]
+    for i, more in enumerate(extra):
+        configs.append({field: teams[(7 * i + 3) % len(teams)], **more})
+    return configs
+
+
+SOURCE_APPS = {
+    "mlb_game": {
+        "configs": lambda runtime, main: [{}] + team_configs(runtime, main, "team", [
+            {"gameday_only": "true"}, {"include_exhibition_opponents": "true"},
+            {"timezone": "America/Los_Angeles"}, {"timezone": "America/Chicago", "gameday_only": "true"}]),
+        "scenarios": {
+            "final": mlb("2026-08-01", "Final"), "live": mlb("2026-08-01", "Live"),
+            "pregame": mlb("2026-08-02", "Preview"), "nogame": mlb("2026-08-01", no_games=True),
+        },
+    },
+}
+
+
+def record_source(runtime, base_main, app, directory, configs):
+    spec = SOURCE_APPS[app]
+    directory.mkdir(parents=True, exist_ok=True)
+    for name, hook in {"today": None, **spec["scenarios"]}.items():
+        snap = Snapshot(directory / app / name)
+        for step in range(6):
+            # The first round (live network) probes one time only, to stay under provider rate limits.
+            probes = [(c, now) for c in configs for now in (NOWS[:1] if step == 0 and not snap.entries else NOWS)]
+
+            def probe(job):
+                (config, now), index = job
+                out = directory / f"probe-{index}"
+                meta, err = render(runtime, base_main, out.with_suffix(".webp"), config, now, 1,
+                                   snap.dir if snap.entries else None, out.with_suffix(".json"))
+                if meta is None:
+                    print(f"{app}/{name}: record render failed {config} {now}: {err}", file=sys.stderr)
+                    return set()
+                return {i["url"] for i in meta["inputs"] if i["url"] not in snap.entries}
+
+            with concurrent.futures.ThreadPoolExecutor(8 if snap.entries else 2) as pool:
+                missing = set().union(*pool.map(probe, [(p, i) for i, p in enumerate(probes)]))
+            if not missing:
+                break
+            for url in sorted(missing):
+                snap.add(url, *((hook and hook(url)) or fetch(url)))
+        print(f"{app}/{name}: {len(snap.entries)} recorded responses")
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("runtime")
@@ -206,9 +326,10 @@ def main():
             cfg = CONFIG[app]
             base_main = base_copy(args.base, app, tmp / "base")
             new_main = root / "apps" / app / cfg["source"]
-            configs = matrix(runtime, base_main, app)
+            source = cfg["feed"] == "source"
+            configs = SOURCE_APPS[app]["configs"](runtime, base_main) if source else matrix(runtime, base_main, app)
             if args.record:
-                record(runtime, base_main, app, args.snapshots, configs)
+                (record_source if source else record)(runtime, base_main, app, args.snapshots, configs)
             scenarios = sorted(p.name for p in (args.snapshots / app).iterdir() if (p / "index.json").exists())
             jobs = [(s, c, now, scale) for s in scenarios for c in configs for now in NOWS for scale in cfg["scales"]]
 

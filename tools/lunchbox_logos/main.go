@@ -1,5 +1,7 @@
 // Command lunchbox_logos bundles pre-resized team logos into the LunchBox8484
-// professional-league score and standings apps.
+// professional-league score and standings apps, and into other sports apps
+// whose logo URLs come from team tables in their own source ("feed": "source",
+// see source.go).
 //
 // Usage, from the repository root:
 //
@@ -55,7 +57,8 @@ const transparentURL = "https://i.ibb.co/5LMp8T1/transparent.png"
 
 type appConfig struct {
 	Source string `json:"source"`
-	// "scoreboard" or "standings".
+	// "scoreboard" or "standings" (league feed), or "source" (team tables in
+	// the app source; Rule names the mirror in sourceLogos).
 	Feed   string `json:"feed"`
 	League string `json:"league"`
 	// URL rewriting copied from the app's get_logoType; see candidates().
@@ -337,17 +340,95 @@ func generate(root, name string, cfg appConfig, check bool) error {
 		return err
 	}
 	source := string(sourceBytes)
-	alt, err := sourceTable(source, "ALT_LOGO")
+	var uses map[string]*logoUse
+	var unbundled []string
+	if cfg.Feed == "source" {
+		uses, unbundled, err = sourceUses(cfg, source)
+	} else {
+		uses, unbundled, err = feedUses(cfg, source)
+	}
 	if err != nil {
 		return err
+	}
+
+	var logos []*bundled
+	for _, key := range sortedKeys(uses) {
+		u := uses[key]
+		var src []byte
+		if strings.HasPrefix(key, "https://") {
+			src = fetch(key).body
+		} else if src, err = os.ReadFile(filepath.Join(dir, key)); err != nil {
+			return err
+		}
+		var teams []string
+		for _, team := range sortedKeys(u.teams) {
+			if team != "" {
+				teams = append(teams, team)
+			}
+		}
+		stem := strings.ToLower(strings.Join(teams, "-"))
+		stem = regexp.MustCompile(`[^a-z0-9-]+`).ReplaceAllString(stem, "")
+		if stem == "" || len(teams) > 3 {
+			stem = "shared"
+		}
+		digest := sha256.Sum256([]byte(key))
+		logos = append(logos, &bundled{key: key, name: stem + "-" + hex.EncodeToString(digest[:4]), teams: teams, src: src, files: map[int]string{}})
+		_ = u
+	}
+
+	files := map[string][]byte{}
+	exact, original := 0, 0
+	for _, logo := range logos {
+		img, format, err := image.Decode(bytes.NewReader(logo.src))
+		if err != nil {
+			return fmt.Errorf("%s: %w", logo.key, err)
+		}
+		for _, size := range sortedKeys(uses[logo.key].sizes) {
+			encoded, ok := resized(img, format, size)
+			if ok {
+				path := fmt.Sprintf("images/logos/%s-%d.png", logo.name, size)
+				files[path] = encoded
+				logo.files[size] = path
+				exact++
+				continue
+			}
+			ext := ".png"
+			if format == "jpeg" {
+				ext = ".jpg"
+			}
+			path := "images/logos/" + logo.name + "-source" + ext
+			files[path] = logo.src
+			logo.files[size] = path
+			original++
+		}
+	}
+	files["logos.star"] = []byte(starlark(name, logos))
+	files["images/logos/README.md"] = []byte(fmt.Sprintf(provenance, name))
+
+	total := 0
+	for _, body := range files {
+		total += len(body)
+	}
+	fmt.Printf("%s: %d logo URLs, %d pre-resized files, %d sizes served from original bytes, %d bytes\n", name, len(logos), exact, original, total)
+	for _, missing := range unbundled {
+		fmt.Printf("%s: not bundled (network fallback): %s\n", name, missing)
+	}
+	return writeOrCheck(dir, files, check)
+}
+
+// feedUses derives the logo URLs of a LunchBox app from its league feed.
+func feedUses(cfg appConfig, source string) (map[string]*logoUse, []string, error) {
+	alt, err := sourceTable(source, "ALT_LOGO")
+	if err != nil {
+		return nil, nil, err
 	}
 	magnify, err := sourceTable(source, "MAGNIFY_LOGO")
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 	teams, err := feedLogos(cfg)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 	for team := range alt {
 		if teams[team] == nil {
@@ -418,70 +499,7 @@ func generate(root, name string, cfg appConfig, check bool) error {
 	if cfg.Feed == "scoreboard" && strings.HasSuffix(cfg.Rule, "_fallback") {
 		use(transparentURL, "", sortedKeys(all))
 	}
-
-	var logos []*bundled
-	for _, key := range sortedKeys(uses) {
-		u := uses[key]
-		var src []byte
-		if strings.HasPrefix(key, "https://") {
-			src = fetch(key).body
-		} else if src, err = os.ReadFile(filepath.Join(dir, key)); err != nil {
-			return err
-		}
-		var teams []string
-		for _, team := range sortedKeys(u.teams) {
-			if team != "" {
-				teams = append(teams, team)
-			}
-		}
-		stem := strings.ToLower(strings.Join(teams, "-"))
-		stem = regexp.MustCompile(`[^a-z0-9-]+`).ReplaceAllString(stem, "")
-		if stem == "" || len(teams) > 3 {
-			stem = "shared"
-		}
-		digest := sha256.Sum256([]byte(key))
-		logos = append(logos, &bundled{key: key, name: stem + "-" + hex.EncodeToString(digest[:4]), teams: teams, src: src, files: map[int]string{}})
-		_ = u
-	}
-
-	files := map[string][]byte{}
-	exact, original := 0, 0
-	for _, logo := range logos {
-		img, format, err := image.Decode(bytes.NewReader(logo.src))
-		if err != nil {
-			return fmt.Errorf("%s: %w", logo.key, err)
-		}
-		for _, size := range sortedKeys(uses[logo.key].sizes) {
-			encoded, ok := resized(img, format, size)
-			if ok {
-				path := fmt.Sprintf("images/logos/%s-%d.png", logo.name, size)
-				files[path] = encoded
-				logo.files[size] = path
-				exact++
-				continue
-			}
-			ext := ".png"
-			if format == "jpeg" {
-				ext = ".jpg"
-			}
-			path := "images/logos/" + logo.name + "-source" + ext
-			files[path] = logo.src
-			logo.files[size] = path
-			original++
-		}
-	}
-	files["logos.star"] = []byte(starlark(name, logos))
-	files["images/logos/README.md"] = []byte(fmt.Sprintf(provenance, name))
-
-	total := 0
-	for _, body := range files {
-		total += len(body)
-	}
-	fmt.Printf("%s: %d logo URLs, %d pre-resized files, %d sizes served from original bytes, %d bytes\n", name, len(logos), exact, original, total)
-	for _, missing := range unbundled {
-		fmt.Printf("%s: not bundled (network fallback): %s\n", name, missing)
-	}
-	return writeOrCheck(dir, files, check)
+	return uses, unbundled, nil
 }
 
 // resized returns the runtime's resize of img encoded as PNG, if decoding the
