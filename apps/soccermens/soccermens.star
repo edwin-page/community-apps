@@ -219,8 +219,9 @@ def main(config):
                     homeScore = ""
                     awayScore = ""
                 else:
-                    homeScore = competition["competitors"][0]["records"][0]["summary"]
-                    awayScore = competition["competitors"][1]["records"][0]["summary"]
+                    # Niblet: either team may lack a record (see record_summary).
+                    homeScore = record_summary(competition["competitors"][0])
+                    awayScore = record_summary(competition["competitors"][1])
 
             if gameStatus == "in":
                 gameTime = s["status"]["type"]["shortDetail"]
@@ -255,8 +256,9 @@ def main(config):
                     scoreFont = "CG-pixel-3x5-mono"
 
                     #if game is PPD - show records instead of blanks
-                    homeScore = competition["competitors"][0]["records"][0]["summary"]
-                    awayScore = competition["competitors"][1]["records"][0]["summary"]
+                    # Niblet: blank when the feed has no record (cup matches have none).
+                    homeScore = record_summary(competition["competitors"][0])
+                    awayScore = record_summary(competition["competitors"][1])
                     gameTime = "Postponed"
                 else:
                     homeScore = competition["competitors"][0]["score"]
@@ -778,6 +780,14 @@ def get_team_name(name):
         theName = name
     return theName.upper()
 
+# Niblet: a competitor's first record summary, or no record ("") when the feed
+# omits it (cup opponents from other divisions often have none).
+def record_summary(competitor):
+    records = competitor.get("records") or []
+    if not records:
+        return ""
+    return records[0].get("summary") or ""
+
 def get_record(record):
     if len(record) > 6:
         theRecord = record[:5] + "_"
@@ -1022,7 +1032,8 @@ def parse_game_wide(s, config, timezone):
     # stay just "PENS" (the running tally would be stale between refreshes).
     has_pen = pen_final
     if pen_final:
-        status_text = status_text + " " + lp + "-" + rp
+        # Niblet: the feed reports a non-zero tally as a number, not a string.
+        status_text = status_text + " " + str(lp) + "-" + str(rp)
 
     return dict(
         state = state,
