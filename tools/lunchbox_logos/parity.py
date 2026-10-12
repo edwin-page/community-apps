@@ -319,6 +319,15 @@ SOURCE_APPS = {
         "configs": lambda runtime, main: [{}] + team_configs(runtime, main, "team", []),
         "scenarios": {"aug": mlb("2026-08-01"), "sep": mlb("2026-09-20"), "apr": mlb("2026-04-10")},
     },
+    "mlbliveticker": {
+        "configs": lambda runtime, main: [{}] + team_configs(runtime, main, "team", [
+            {"hide_idle": "false"}, {"$tz": "America/New_York"}, {"$tz": "America/Los_Angeles", "hide_idle": "false"}]),
+        "scenarios": {
+            # Final with the next game scheduled (final and next-matchup logos), and without one.
+            "final": mlb("2026-08-01", "Final", next_state="Preview"), "final_nonext": mlb("2026-08-01", "Final"),
+            "live": mlb("2026-08-01", "Live"), "pregame": mlb("2026-08-02", "Preview"),
+        },
+    },
 }
 
 

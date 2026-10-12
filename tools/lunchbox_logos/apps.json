@@ -84,5 +84,9 @@
   "mlbnextgames": {
     "source": "mlb_next_games.star", "feed": "source", "rule": "mlb_next_games",
     "layout_sizes": [12], "scales": [1]
+  },
+  "mlbliveticker": {
+    "source": "mlbliveticker.star", "feed": "source", "rule": "mlbliveticker",
+    "layout_sizes": [20, 24], "scales": [1]
   }
 }
