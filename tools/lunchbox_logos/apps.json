@@ -100,5 +100,21 @@
     "placeholders": ["https://upload.wikimedia.org/wikipedia/commons/c/ca/1x1.png?src=soccermens"],
     "layout_sizes": [16, 30, 32], "scales": [1],
     "parity_teams": ["86", "102", "104", "114", "124", "166", "187", "190", "193", "262", "352", "359", "360", "363", "364", "368", "383", "1068", "2980", "3101", "4411", "7632", "9723", "15362", "15364", "15365", "19002", "19995", "21422", "22187", "22414", "22415", "22528", "131563"]
+  },
+  "mlb_game": {
+    "source": "mlb_game.star", "feed": "source", "rule": "mlb_game",
+    "layout_sizes": [14], "scales": [1]
+  },
+  "nhllive": {
+    "source": "nhl_live.star", "feed": "source", "rule": "nhl_live",
+    "layout_sizes": [18], "scales": [1]
+  },
+  "mlbnextgames": {
+    "source": "mlb_next_games.star", "feed": "source", "rule": "mlb_next_games",
+    "layout_sizes": [12], "scales": [1]
+  },
+  "mlbliveticker": {
+    "source": "mlbliveticker.star", "feed": "source", "rule": "mlbliveticker",
+    "layout_sizes": [20, 24], "scales": [1]
   }
 }

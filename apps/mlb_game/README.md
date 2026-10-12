@@ -50,6 +50,34 @@ pre-game Wild Card game, and the other 22 showed "No game". The default
 (no team) and 2x NYY renders completed. Live in-progress and final postseason
 states, doubleheaders, and physical devices were not tested with this change.
 
+## Bundled pre-resized team logos (October 2026)
+
+Downstream change, original authorship retained. Every team logo URL the app
+can request is packaged in `images/logos/` at the 14-pixel size the team tiles
+draw it, produced by the runtime's own nearest-neighbour resize from the same
+source URLs; `logos.star` lists each source URL and its SHA-256. That is 56
+URLs: the ESPN dark scoreboard logos (via the combiner) for teams in
+`ESPN_TEAM_META`, the plain dark ESPN logos used for the "No game" screen and
+for codes ESPN does not list (`AZ`, `CWS`), and the four alternate Phillies,
+Tigers, Reds and Cardinals logos. The Phillies and Tigers alternates are
+palette PNGs whose resize the bundle cannot reproduce exactly, so their
+original bytes are bundled and still resized at render time. Regenerate or
+verify with `cd tools/lunchbox_logos && go run . -app mlb_game [-check]`.
+Renders now make only the schedule request. A logo URL or size missing from
+the bundle is still fetched as before. Settings, game selection, timing and
+artwork are unchanged; a logo a provider later redraws at the same URL stays
+at the bundled version until the bundle is regenerated.
+
+Validation: `tools/lunchbox_logos/parity.py` rendered the previous and new
+source from the same recorded responses: today's schedules (2026-10-12) and
+the 2026-08-01/02 schedules as final, live (state and count rewritten),
+pre-game and no-game screens, for all 30 teams, the default, both toggles and
+two timezones, at three pinned times: 525 of 525 WebP outputs were
+byte-identical, with no request outside the recording; 54 of the 56 bundled
+URLs were drawn (the ESPN `ari` and `chw` keys are reached only if the
+schedule ever reports `ARI` or `CHW`). The app does not declare 2x support, so
+only 1x was rendered. Physical-screen playback is not covered by these checks.
+
 ## Known limitations
 
 - Start times of 10:00 or later are clipped ("10:00E") in the status tile.
