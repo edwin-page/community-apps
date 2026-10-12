@@ -85,5 +85,12 @@
     "placeholders": ["https://upload.wikimedia.org/wikipedia/commons/c/ca/1x1.png?src=soccermens",
                      "https://a.espncdn.com/i/espn/misc_logos/500/ncaa_football.vresize.50.50.medium.1.png"],
     "layout_sizes": [9, 16, 30, 32], "scales": [1], "render_scales": [1, 2]
+  },
+  "soccerwomens": {
+    "source": "soccerwomens.star", "pack": true, "feed": "teams", "sport": "soccer", "rule": "combiner",
+    "leagues": ["aus.w.1", "concacaf.womens.championship", "conmebol.america.femenina", "ned.w.1", "ned.w.knvb_cup", "eng.w.fa", "eng.w.1", "fra.w.1", "usa.ncaa.w.1", "global.pinatar_cup", "fifa.shebelieves", "esp.copa_de_la_reina", "esp.w.1", "uefa.wchampions", "uefa.weuro", "usa.nwsl", "usa.nwsl.cup", "fifa.friendly.w", "fifa.w.olympics", "fifa.wwc", "fifa.wworld.u17", "fifa.wworldq.uefa"],
+    "placeholders": ["https://upload.wikimedia.org/wikipedia/commons/c/ca/1x1.png?src=soccerwomens",
+                     "https://a.espncdn.com/i/espn/misc_logos/500/ncaa_football.vresize.50.50.medium.1.png"],
+    "layout_sizes": [9, 16, 30, 32], "scales": [1], "render_scales": [1, 2]
   }
 }
