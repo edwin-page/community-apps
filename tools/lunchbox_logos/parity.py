@@ -315,6 +315,10 @@ SOURCE_APPS = {
             "pregame": nhl("2026-03-02", "FUT"), "season": nhl("2026-03-02", empty_week=True),
         },
     },
+    "mlbnextgames": {
+        "configs": lambda runtime, main: [{}] + team_configs(runtime, main, "team", []),
+        "scenarios": {"aug": mlb("2026-08-01"), "sep": mlb("2026-09-20"), "apr": mlb("2026-04-10")},
+    },
 }
 
 

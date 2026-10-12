@@ -80,5 +80,9 @@
   "nhllive": {
     "source": "nhl_live.star", "feed": "source", "rule": "nhl_live",
     "layout_sizes": [18], "scales": [1]
+  },
+  "mlbnextgames": {
+    "source": "mlb_next_games.star", "feed": "source", "rule": "mlb_next_games",
+    "layout_sizes": [12], "scales": [1]
   }
 }
