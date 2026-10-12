@@ -851,5 +851,146 @@
     }
    }
   ]
+ },
+ "wnbascores": {
+  "source": "basketball/wnba scoreboard for 11 May 2024 (preseason; Puerto Rico has no records), rewritten to scheduled",
+  "events": [
+   {
+    "id": "401653736",
+    "uid": "s:40~l:59~e:401653736",
+    "date": "2024-05-11T17:00Z",
+    "name": "Puerto Rico Puerto Rico at Las Vegas Aces",
+    "shortName": "PUERTORICO @ LV",
+    "season": {
+     "year": 2024,
+     "type": 1,
+     "slug": "preseason"
+    },
+    "competitions": [
+     {
+      "id": "401653736",
+      "uid": "s:40~l:59~e:401653736~c:401653736",
+      "date": "2024-05-11T17:00Z",
+      "attendance": 0,
+      "type": {
+       "id": "1",
+       "abbreviation": "STD"
+      },
+      "timeValid": true,
+      "neutralSite": false,
+      "conferenceCompetition": false,
+      "recent": false,
+      "venue": {
+       "id": "1962",
+       "fullName": "Colonial Life Arena",
+       "address": {
+        "city": "Columbia",
+        "state": "SC"
+       },
+       "indoor": true
+      },
+      "competitors": [
+       {
+        "id": "17",
+        "uid": "s:40~l:59~t:17",
+        "type": "team",
+        "order": 0,
+        "homeAway": "home",
+        "team": {
+         "id": "17",
+         "uid": "s:40~l:59~t:17",
+         "location": "Las Vegas",
+         "name": "Aces",
+         "abbreviation": "LV",
+         "displayName": "Las Vegas Aces",
+         "shortDisplayName": "Aces",
+         "color": "a7a8aa",
+         "alternateColor": "000000",
+         "isActive": true,
+         "venue": {
+          "id": "780"
+         },
+         "logo": "https://a.espncdn.com/i/teamlogos/wnba/500/lv.png",
+         "logoDark": "https://a.espncdn.com/i/teamlogos/wnba/500-dark/lv.png"
+        },
+        "score": "0",
+        "records": [
+         {
+          "name": "overall",
+          "abbreviation": "Total",
+          "type": "total",
+          "summary": "0-0"
+         },
+         {
+          "name": "Home",
+          "type": "home",
+          "summary": "0-0"
+         },
+         {
+          "name": "Road",
+          "type": "road",
+          "summary": "0-0"
+         }
+        ]
+       },
+       {
+        "id": "104959",
+        "uid": "s:40~l:59~t:104959",
+        "type": "team",
+        "order": 1,
+        "homeAway": "away",
+        "team": {
+         "id": "104959",
+         "uid": "s:40~l:59~t:104959",
+         "location": "Puerto Rico",
+         "name": "Puerto Rico",
+         "abbreviation": "PUERTORICO",
+         "displayName": "Puerto Rico",
+         "shortDisplayName": "Puerto Rico",
+         "isActive": false
+        },
+        "score": "0"
+       }
+      ],
+      "notes": [],
+      "status": {
+       "clock": 0.0,
+       "displayClock": "0.0",
+       "period": 4,
+       "type": {
+        "id": "3",
+        "name": "STATUS_FINAL",
+        "state": "post",
+        "completed": true,
+        "description": "Final",
+        "detail": "Final",
+        "shortDetail": "Final"
+       }
+      },
+      "format": {
+       "regulation": {
+        "periods": 4
+       }
+      },
+      "startDate": "2024-05-11T17:00Z",
+      "broadcast": ""
+     }
+    ],
+    "status": {
+     "clock": 0.0,
+     "displayClock": "0.0",
+     "period": 4,
+     "type": {
+      "id": "1",
+      "name": "STATUS_SCHEDULED",
+      "state": "pre",
+      "completed": false,
+      "description": "Scheduled",
+      "detail": "Scheduled",
+      "shortDetail": "Scheduled"
+     }
+    }
+   }
+  ]
  }
 }
