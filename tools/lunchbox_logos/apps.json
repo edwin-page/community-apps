@@ -76,5 +76,9 @@
   "mlb_game": {
     "source": "mlb_game.star", "feed": "source", "rule": "mlb_game",
     "layout_sizes": [14], "scales": [1]
+  },
+  "nhllive": {
+    "source": "nhl_live.star", "feed": "source", "rule": "nhl_live",
+    "layout_sizes": [18], "scales": [1]
   }
 }

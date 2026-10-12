@@ -260,6 +260,27 @@ def mlb(day, state=None, next_state=None, no_games=False):
     return hook
 
 
+def nhl(week, state=None, empty_week=False):
+    """api-web club week schedules for the week of `week`, games[0] optionally in `state`."""
+    def hook(url):
+        if re.search(r"/v1/club-schedule/\w+/week/now$", url):
+            doc = json_body(url.replace("/week/now", "/week/" + week))
+            if empty_week:
+                doc["games"] = []
+            elif state and doc["games"]:
+                doc["games"][0]["gameState"] = state
+            return 200, json.dumps(doc).encode()
+        if state == "LIVE" and url.endswith("/boxscore"):
+            doc = json_body(url)
+            doc["gameState"] = "LIVE"
+            doc["clock"] = {"timeRemaining": "07:42", "secondsRemaining": 462, "running": True, "inIntermission": False}
+            doc["periodDescriptor"] = {"number": 2, "periodType": "REG", "maxRegulationPeriods": 3}
+            doc["situation"] = {"situationCode": "1451"}
+            return 200, json.dumps(doc).encode()
+        return None
+    return hook
+
+
 def team_configs(runtime, main, field, extra):
     teams = [t for t in options(runtime, main, field) if t not in ("0", "")]
     configs = [{field: t} for t in teams]
@@ -267,6 +288,8 @@ def team_configs(runtime, main, field, extra):
         configs.append({field: teams[(7 * i + 3) % len(teams)], **more})
     return configs
 
+
+NHL_STATS = ["sog", "pim", "ppg", "fo", "hit", "blk", "take", "give"]
 
 SOURCE_APPS = {
     "mlb_game": {
@@ -276,6 +299,20 @@ SOURCE_APPS = {
         "scenarios": {
             "final": mlb("2026-08-01", "Final"), "live": mlb("2026-08-01", "Live"),
             "pregame": mlb("2026-08-02", "Preview"), "nogame": mlb("2026-08-01", no_games=True),
+        },
+    },
+    "nhllive": {
+        # random.number picks the team for "Shuffle All Teams" (0) and the live
+        # stat among those enabled, so 0 is left out and each config enables
+        # exactly one stat (cycling through all eight).
+        "configs": lambda runtime, main: [
+            {**c, **{stat: str(stat == NHL_STATS[i % len(NHL_STATS)]).lower() for stat in NHL_STATS}}
+            for i, c in enumerate(team_configs(runtime, main, "teamid", [
+                {"liveupdates": "false"}, {"gameday": "true"}, {"timezone": "America/Los_Angeles"},
+                {"timezone": "Europe/Helsinki", "liveupdates": "false"}]))],
+        "scenarios": {
+            "final": nhl("2026-03-02"), "live": nhl("2026-03-02", "LIVE"),
+            "pregame": nhl("2026-03-02", "FUT"), "season": nhl("2026-03-02", empty_week=True),
         },
     },
 }
