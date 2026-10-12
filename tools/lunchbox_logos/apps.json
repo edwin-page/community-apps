@@ -72,5 +72,11 @@
   "nbastandings": {
     "source": "nba_standings.star", "feed": "standings", "league": "basketball/nba",
     "rule": "combiner", "layout_sizes": [10], "scales": [1]
+  },
+  "eplscores": {
+    "source": "eplscores.star", "feed": "scoreboard", "league": "soccer/eng.1",
+    "rule": "combiner", "dates": [["20260815", "20260915"]],
+    "layout_sizes": [30, 32], "compact": true, "scales": [1],
+    "parity_canvases": [[64, 32], [64, 64]]
   }
 }
