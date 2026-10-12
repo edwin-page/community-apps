@@ -992,5 +992,313 @@
     }
    }
   ]
+ },
+ "ncaafscores": {
+  "source": "football/college-football scoreboard, groups=35 (Division II/III), recorded 12 October 2026",
+  "events": [
+   {
+    "id": "401915932",
+    "uid": "s:20~l:23~e:401915932",
+    "date": "2026-10-17T17:00Z",
+    "name": "Apprentice School Builders at Keystone Giants",
+    "shortName": "APP @ KYSTN",
+    "season": {
+     "year": 2026,
+     "type": 2,
+     "slug": "regular-season"
+    },
+    "week": {
+     "number": 7
+    },
+    "competitions": [
+     {
+      "id": "401915932",
+      "uid": "s:20~l:23~e:401915932~c:401915932",
+      "date": "2026-10-17T17:00Z",
+      "attendance": 0,
+      "type": {
+       "id": "1",
+       "abbreviation": "STD"
+      },
+      "timeValid": true,
+      "dateValid": true,
+      "neutralSite": false,
+      "conferenceCompetition": false,
+      "recent": false,
+      "venue": {
+       "id": "7082",
+       "fullName": "Athletic Field Complex",
+       "address": {
+        "city": "La Plume",
+        "state": "PA",
+        "country": "USA"
+       },
+       "indoor": false
+      },
+      "competitors": [
+       {
+        "id": "122774",
+        "uid": "s:20~l:23~t:122774",
+        "type": "team",
+        "order": 0,
+        "homeAway": "home",
+        "team": {
+         "id": "122774",
+         "uid": "s:20~l:23~t:122774",
+         "location": "Keystone",
+         "name": "Giants",
+         "abbreviation": "KYSTN",
+         "displayName": "Keystone Giants",
+         "shortDisplayName": "Keystone",
+         "isActive": true,
+         "venue": {
+          "id": "7082"
+         },
+         "logo": "https://a.espncdn.com/i/teamlogos/ncaa/500/122774.png",
+         "logoDark": "https://a.espncdn.com/i/teamlogos/ncaa/500-dark/122774.png",
+         "conferenceId": "113"
+        },
+        "score": "0",
+        "curatedRank": {
+         "current": 99
+        },
+        "records": [
+         {
+          "name": "overall",
+          "abbreviation": "overall",
+          "type": "total",
+          "summary": "1-4"
+         },
+         {
+          "name": "Home",
+          "abbreviation": "Home",
+          "type": "homerecord",
+          "summary": "1-1"
+         },
+         {
+          "name": "Away",
+          "abbreviation": "Away",
+          "type": "awayrecord",
+          "summary": "0-3"
+         },
+         {
+          "name": "vs. Conf.",
+          "abbreviation": "CONF",
+          "type": "vsconf",
+          "summary": "0-0"
+         }
+        ]
+       },
+       {
+        "id": "3111",
+        "uid": "s:20~l:23~t:3111",
+        "type": "team",
+        "order": 1,
+        "homeAway": "away",
+        "team": {
+         "id": "3111",
+         "uid": "s:20~l:23~t:3111",
+         "location": "Apprentice School",
+         "name": "Builders",
+         "abbreviation": "APP",
+         "displayName": "Apprentice School Builders",
+         "shortDisplayName": "Apprentice",
+         "color": "000000",
+         "isActive": true,
+         "venue": {
+          "id": "3618"
+         }
+        },
+        "score": "0",
+        "curatedRank": {
+         "current": 99
+        }
+       }
+      ],
+      "notes": [],
+      "status": {
+       "clock": 0.0,
+       "displayClock": "0:00",
+       "period": 0,
+       "type": {
+        "id": "1",
+        "name": "STATUS_SCHEDULED",
+        "state": "pre",
+        "completed": false,
+        "description": "Scheduled",
+        "detail": "Sat, October 17th at 1:00 PM EDT",
+        "shortDetail": "10/17 - 1:00 PM EDT"
+       }
+      },
+      "format": {
+       "regulation": {
+        "periods": 4
+       }
+      },
+      "startDate": "2026-10-17T17:00Z",
+      "broadcast": ""
+     }
+    ],
+    "status": {
+     "clock": 0.0,
+     "displayClock": "0:00",
+     "period": 0,
+     "type": {
+      "id": "1",
+      "name": "STATUS_SCHEDULED",
+      "state": "pre",
+      "completed": false,
+      "description": "Scheduled",
+      "detail": "Sat, October 17th at 1:00 PM EDT",
+      "shortDetail": "10/17 - 1:00 PM EDT"
+     }
+    }
+   },
+   {
+    "id": "401908321",
+    "uid": "s:20~l:23~e:401908321",
+    "date": "2026-10-17T18:00Z",
+    "name": "Mary Hardin-Baylor Crusaders at Texas Wesleyan Rams",
+    "shortName": "MAR @ TWES",
+    "season": {
+     "year": 2026,
+     "type": 2,
+     "slug": "regular-season"
+    },
+    "week": {
+     "number": 7
+    },
+    "competitions": [
+     {
+      "id": "401908321",
+      "uid": "s:20~l:23~e:401908321~c:401908321",
+      "date": "2026-10-17T18:00Z",
+      "attendance": 0,
+      "type": {
+       "id": "1",
+       "abbreviation": "STD"
+      },
+      "timeValid": true,
+      "dateValid": true,
+      "neutralSite": false,
+      "conferenceCompetition": false,
+      "recent": false,
+      "competitors": [
+       {
+        "id": "102626",
+        "uid": "s:20~l:23~t:102626",
+        "type": "team",
+        "order": 0,
+        "homeAway": "home",
+        "team": {
+         "id": "102626",
+         "uid": "s:20~l:23~t:102626",
+         "location": "Texas Wesleyan",
+         "name": "Rams",
+         "abbreviation": "TWES",
+         "displayName": "Texas Wesleyan Rams",
+         "shortDisplayName": "Texas Wesleyan",
+         "isActive": false
+        },
+        "score": "0",
+        "curatedRank": {
+         "current": 99
+        }
+       },
+       {
+        "id": "2371",
+        "uid": "s:20~l:23~t:2371",
+        "type": "team",
+        "order": 1,
+        "homeAway": "away",
+        "team": {
+         "id": "2371",
+         "uid": "s:20~l:23~t:2371",
+         "location": "Mary Hardin-Baylor",
+         "name": "Crusaders",
+         "abbreviation": "MAR",
+         "displayName": "Mary Hardin-Baylor Crusaders",
+         "shortDisplayName": "Mary Hardin",
+         "color": "492f92",
+         "alternateColor": "fece1c",
+         "isActive": false,
+         "venue": {
+          "id": "4463"
+         },
+         "logo": "https://a.espncdn.com/i/teamlogos/ncaa/500/2371.png",
+         "logoDark": "https://a.espncdn.com/i/teamlogos/ncaa/500-dark/2371.png"
+        },
+        "score": "0",
+        "curatedRank": {
+         "current": 99
+        },
+        "records": [
+         {
+          "name": "overall",
+          "abbreviation": "overall",
+          "type": "total",
+          "summary": "4-1"
+         },
+         {
+          "name": "Home",
+          "abbreviation": "Home",
+          "type": "homerecord",
+          "summary": "2-1"
+         },
+         {
+          "name": "Away",
+          "abbreviation": "Away",
+          "type": "awayrecord",
+          "summary": "2-0"
+         },
+         {
+          "name": "vs. Conf.",
+          "abbreviation": "CONF",
+          "type": "vsconf",
+          "summary": "1-0"
+         }
+        ]
+       }
+      ],
+      "notes": [],
+      "status": {
+       "clock": 0.0,
+       "displayClock": "0:00",
+       "period": 0,
+       "type": {
+        "id": "1",
+        "name": "STATUS_SCHEDULED",
+        "state": "pre",
+        "completed": false,
+        "description": "Scheduled",
+        "detail": "Sat, October 17th at 2:00 PM EDT",
+        "shortDetail": "10/17 - 2:00 PM EDT"
+       }
+      },
+      "format": {
+       "regulation": {
+        "periods": 4
+       }
+      },
+      "startDate": "2026-10-17T18:00Z",
+      "broadcast": ""
+     }
+    ],
+    "status": {
+     "clock": 0.0,
+     "displayClock": "0:00",
+     "period": 0,
+     "type": {
+      "id": "1",
+      "name": "STATUS_SCHEDULED",
+      "state": "pre",
+      "completed": false,
+      "description": "Scheduled",
+      "detail": "Sat, October 17th at 2:00 PM EDT",
+      "shortDetail": "10/17 - 2:00 PM EDT"
+     }
+    }
+   }
+  ]
  }
 }

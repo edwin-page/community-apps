@@ -88,3 +88,26 @@ Division II/III samples use no pre-game line. With the default record line,
 both versions fail when an opponent's feed entry has no `records`. That is an
 existing app limitation, and this change leaves it as it was. Physical-screen
 playback is not covered by these checks.
+
+### Teams without a record (October 2026)
+
+Downstream change, original authorship retained. The Division II/III and FCS
+scoreboards include opponents whose feed entry has no `records` (for example
+Apprentice School, scheduled for 17 October 2026). With the default Record
+pre-game line, such a game before kickoff failed every render of that
+scoreboard with `key "records" not in dict`; this was the limitation noted
+above. A team without a record now shows no record, and its opponent still
+shows its own. When the home team has no record both teams still show `0-0`,
+as before. Nothing else changes. `tools/college_logos/parity.py` now renders
+the Division II/III configurations with the default Record line, so it needs a
+base revision that includes this change.
+
+Validation: the `tools/college_logos/parity.py` matrix (now with the Record
+line on Division II/III) rendered the previous and new source from the same
+recorded responses: the live feeds of 12 October and 8 October 2026 and every
+conference's week-5 scoreboard, at three pinned times and both scales. All 744
+renders that the previous source completed were byte-identical. The other 48
+(24 from each live recording) failed before on the missing record and now
+render. No request fell outside the recording.
+`tests/scoreboard_missing_records.py` renders the recorded Division II/III
+games in every layout. Physical-screen playback is not covered by these checks.
