@@ -345,6 +345,7 @@
   {
     "app_id": "nhl-live",
     "source_path": "apps/nhllive/nhl_live.star",
+    "equivalence_ref": "766e8a0f",
     "previous_sha256": "d0ddbe802cb753d3e626745690e2c1153b50b338f18bfad1f0d6570db91b94e3",
     "location_field": "location",
     "kind": "timezone-only"

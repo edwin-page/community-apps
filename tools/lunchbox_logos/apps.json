@@ -72,5 +72,21 @@
   "nbastandings": {
     "source": "nba_standings.star", "feed": "standings", "league": "basketball/nba",
     "rule": "combiner", "layout_sizes": [10], "scales": [1]
+  },
+  "mlb_game": {
+    "source": "mlb_game.star", "feed": "source", "rule": "mlb_game",
+    "layout_sizes": [14], "scales": [1]
+  },
+  "nhllive": {
+    "source": "nhl_live.star", "feed": "source", "rule": "nhl_live",
+    "layout_sizes": [18], "scales": [1]
+  },
+  "mlbnextgames": {
+    "source": "mlb_next_games.star", "feed": "source", "rule": "mlb_next_games",
+    "layout_sizes": [12], "scales": [1]
+  },
+  "mlbliveticker": {
+    "source": "mlbliveticker.star", "feed": "source", "rule": "mlbliveticker",
+    "layout_sizes": [20, 24], "scales": [1]
   }
 }
