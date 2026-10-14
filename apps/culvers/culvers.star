@@ -59,9 +59,12 @@ def get_flavor_info(restaurant_location):
     lng, lat = coordinates
     if float(lat) < -90 or float(lat) > 90 or float(lng) < -180 or float(lng) > 180:
         return {"error": "Choose a valid location"}
+
+    # culvers.com and www.culvers.com only answer US and Canadian IPs;
+    # web.culvers.com serves the same locator API without that block.
     rep = http.get(
         (
-            "https://culvers.com/api/locator/getLocations?lat=%s&long=%s&" +
+            "https://web.culvers.com/api/locator/getLocations?lat=%s&long=%s&" +
             "radius=100&limit=1"
         ) % (lat, lng),
     )
@@ -95,10 +98,12 @@ def get_flavor_info(restaurant_location):
         }
 
     flavor_slug = str(restaurant["metadata"].get("flavorOfDaySlug", ""))
-    if not flavor_slug or len(flavor_slug) > 100:
+
+    # Slugs are image file names such as "img-Snicker-Swirl.png"
+    if not flavor_slug or len(flavor_slug) > 100 or ".." in flavor_slug:
         return {"error": "Flavor image not found"}
     for c in flavor_slug.elems():
-        if c not in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_":
+        if c not in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.":
             return {"error": "Flavor image not found"}
     fotd_image = "https://cdn.culvers.com/menu-item-detail/%s?h=%d" % (
         flavor_slug,

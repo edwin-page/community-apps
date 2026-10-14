@@ -9,3 +9,21 @@ Original authors and other contributors can follow [Updating your app](../../doc
 
 See [known compatibility differences](../../docs/COMPATIBILITY.md) and [maintenance history](../../docs/MAINTENANCE.md). These notes do not certify live integration or compatibility with every runtime. Earlier setup instructions below may describe the upstream version.
 <!-- community-maintenance:end -->
+
+## Regional block fix (October 2026)
+
+Downstream change in this community-maintained version; original authorship
+retained. `culvers.com` and `www.culvers.com` now refuse requests from outside
+the US and Canada with a 403, so the app showed "Culver's status code: 403"
+whenever it was rendered from a server in another country. The app now calls
+the same locator API on `web.culvers.com`, which returns the same data without
+the regional block. Flavor image names now end in `.png` (for example
+`img-Snicker-Swirl.png`), so `.` is allowed in them; `..` is still rejected.
+Settings are unchanged.
+
+Validated on 14 October 2026 with live renders from India, where
+`culvers.com` returns 403: the previous source shows the 403 error, and this
+version shows the flavor and its image for the default Sauk City restaurant
+and a Chicago location at 1x and 2x. `web.culvers.com` also returned the
+flavor from a server in Finland. `check`, `format` and `lint` pass. The
+`web.culvers.com` host is not a documented API and may change.
