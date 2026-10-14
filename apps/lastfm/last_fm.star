@@ -17,6 +17,17 @@ load("time.star", "time")
 
 DEMOICON = DEMOICON_ASSET.readall()
 
+LASTFM_API = "https://ws.audioscrobbler.com/2.0/"
+ART_HOSTS = ("https://lastfm.freetls.fastly.net/", "https://lastfm-img2.akamaized.net/")
+
+def largest_image_url(images):
+    # Last.fm lists sizes small to large; take the largest one that is set.
+    for image in reversed(images or []):
+        url = image.get("#text", "") if type(image) == "dict" else ""
+        if url:
+            return url
+    return ""
+
 def main(config):
     userName = config.get("lastFmUser") or "badUser"
     api_key = config.get("lastApiKey") or "badKey"
@@ -43,7 +54,7 @@ def main(config):
             ),
         )
 
-    rep = http.get("https://ws.audioscrobbler.com/2.0/", params = {
+    rep = http.get(LASTFM_API, params = {
         "method": "user.getrecenttracks",
         "user": userName,
         "api_key": api_key,
@@ -64,14 +75,27 @@ def main(config):
         return render.Root(child = render.Text("No recent tracks", font = "5x8"))
     track = tracks[0]
 
-    #print(track["image"][0])
-    images = track.get("image", [])
-    image_url = images[-1].get("#text", "") if images else ""
-    img = http.get(image_url) if image_url.startswith("https://lastfm.freetls.fastly.net/") or image_url.startswith("https://lastfm-img2.akamaized.net/") else None
+    image_url = largest_image_url(track.get("image"))
 
-    #if no image on last.fm, use a colored box - should be rare
+    # Last.fm leaves recent-track art blank when a scrobble has no linked album;
+    # the track's own album usually still has art.
+    if not image_url:
+        info = http.get(LASTFM_API, params = {
+            "method": "track.getInfo",
+            "artist": track["artist"]["#text"],
+            "track": track["name"],
+            "api_key": api_key,
+            "format": "json",
+            "autocorrect": "1",
+        })
+        if info.status_code == 200:
+            image_url = largest_image_url(info.json().get("track", {}).get("album", {}).get("image"))
+
+    img = http.get(image_url) if image_url.startswith(ART_HOSTS) else None
+
+    # no art anywhere: a dark box keeps the text readable
     if img == None or img.status_code != 200:
-        albumWidget = render.Box(color = "#5F9", height = 32, width = 32)
+        albumWidget = render.Box(color = "#222", height = 32, width = 32)
     else:
         albumWidget = render.Image(src = img.body(), height = 32, width = 32)
 
